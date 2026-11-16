@@ -1,0 +1,63 @@
+{
+  "name": "@ailunsin/dsh-review-gate",
+  "version": "0.1.0",
+  "description": "Deterministic pre-write scope gate and review sequencing for DeepSeek Harness",
+  "license": "MIT",
+  "author": "AiLunSin",
+  "type": "module",
+  "keywords": [
+    "deepseek",
+    "dsh",
+    "dsh-plugin",
+    "dsh-bundle",
+    "review",
+    "scope",
+    "audit",
+    "safety"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AiLunSin/dsh-review-gate.git"
+  },
+  "homepage": "https://github.com/AiLunSin/dsh-review-gate#readme",
+  "bugs": {
+    "url": "https://github.com/AiLunSin/dsh-review-gate/issues"
+  },
+  "engines": {
+    "node": ">=22",
+    "dsh": "0.2.2-rc.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "src",
+    "cordis.patch.yml",
+    "locale",
+    "icon.svg",
+    "docs",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "lint": "node scripts/check-syntax.mjs",
+    "check": "npm run lint && npm test",
+    "e2e": "node e2e/run.mjs",
+    "build:release": "node scripts/build-release.mjs --name @ailunsin/dsh-review-gate",
+    "smoke:install": "node scripts/smoke-install.mjs",
+    "validate:index": "node scripts/validate-market-index.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

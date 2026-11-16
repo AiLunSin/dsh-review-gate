@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+.tools/
+.dsh-extract/
+.tmp/
+*.log
+.DS_Store
+Thumbs.db
+
+# User's Obsidian comparison vault, not part of the plugin.
+对照/

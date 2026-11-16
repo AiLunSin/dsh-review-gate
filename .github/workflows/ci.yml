@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Lint
+        run: npm run lint
+      - name: Unit and integration tests
+        run: npm test
+      - name: Build release
+        run: npm run build:release
+      - name: Smoke install (manifest + pack; DSH profile install skipped in CI)
+        run: npm run smoke:install
+      - name: Validate market index (local structure; official parser needs a DSH install)
+        run: npm run validate:index

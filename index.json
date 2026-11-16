@@ -1,0 +1,83 @@
+{
+  "format": 1,
+  "title": {
+    "en": "Review gate plugins",
+    "zh": "审查门插件"
+  },
+  "description": {
+    "en": "Pre-write boundary control and review sequencing for DeepSeek Harness.",
+    "zh": "DeepSeek Harness 的写入前边界控制与审查顺序编排。"
+  },
+  "metadata": {
+    "categories": {
+      "review": {
+        "title": {
+          "en": "Review",
+          "zh": "审查"
+        }
+      }
+    },
+    "labels": {
+      "safety": {
+        "title": {
+          "en": "Safety",
+          "zh": "安全"
+        }
+      }
+    },
+    "sortKeys": {
+      "name": {
+        "title": {
+          "en": "Name",
+          "zh": "名称"
+        },
+        "order": "asc"
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "@ailunsin/dsh-review-gate",
+      "title": {
+        "en": "Review gate",
+        "zh": "审查门"
+      },
+      "description": {
+        "en": "Deterministic pre-write scope gate and sensitive-deletion checks with a local audit trail.",
+        "zh": "写入前的确定性范围门与敏感删除检查，附本地审计记录。"
+      },
+      "icon": "https://raw.githubusercontent.com/AiLunSin/dsh-review-gate/main/icon.svg",
+      "author": "AiLunSin",
+      "homepage": "https://github.com/AiLunSin/dsh-review-gate",
+      "repository": {
+        "url": "https://github.com/AiLunSin/dsh-review-gate"
+      },
+      "metadata": {
+        "category": "review",
+        "keywords": [
+          "scope",
+          "audit",
+          "safety"
+        ],
+        "labels": [
+          "safety"
+        ],
+        "sortKeys": {
+          "name": 1
+        }
+      },
+      "versions": [
+        {
+          "version": "0.1.0",
+          "publishTimestamp": 1794849134,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": "0.2.2-rc.3"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "审查门",
+    "description": "DeepSeek Harness 的写入前确定性边界控制：声明本次允许修改的路径，对越界写入与敏感删除执行 ask 或 deny，并在本地留下可追溯的审计记录。"
+  }
+}

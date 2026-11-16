@@ -1,0 +1,13 @@
+{
+  "name": "dsh-fake-fs-tool",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Offline unmapped file tool used by e2e/run.mjs to exercise the fs intent safety net. Test only; never published.",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js"
+  ]
+}

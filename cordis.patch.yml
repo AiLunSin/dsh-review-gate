@@ -1,0 +1,14 @@
+# dsh-review-gate bundle layer.
+#
+# This row is inserted after every built-in bundle layer. A profile-level
+# cordis.patch.yml can override it by id (for example, to change scope defaults).
+- insert:
+    - id: review-gate
+      name: '@ailunsin/dsh-review-gate'
+      config:
+        enabled: true
+        scope:
+          enforce: true
+          strict: false
+          default: []
+        onApprovalUnavailable: deny

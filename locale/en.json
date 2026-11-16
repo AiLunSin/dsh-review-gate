@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Review gate",
+    "description": "Deterministic pre-write boundary control for DeepSeek Harness: declare the paths a change may touch, block or ask on out-of-scope writes and sensitive deletions, and keep a local audit trail."
+  }
+}
