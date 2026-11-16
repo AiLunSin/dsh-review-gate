@@ -497,12 +497,13 @@ rules { enabled, disabled[], custom[], ignorePaths[] },
 protectedPaths[],
 onApprovalUnavailable, onInternalError,
 limits { preExecuteMs, readFileBytes, readFileMs, ruleMs, auditQueue },
-audit { enabled, dir, maxFileBytes }
+audit { enabled, dir, maxFileBytes },
+review { maxUnits, entryPatterns[], importGraph, decisionSources[] }
 ```
 
 `custom[]` 条目：`id, title, severity(ask|block), appliesTo[], patterns[], ignorePaths[]`。同 ID 覆盖默认规则；`rules.disabled` 关闭规则。
 
-P1 会新增 `review { enabled, maxUnits, entryPatterns[], importGraph }`；P0 的校验器**拒绝**这些未知键，避免用户以为已经生效。`scope.parseFirstPrompt` 已从设计中去掉：首条指令解析不可审计，P0/P1 都不做。
+`review` 从 0.3.0 起实际生效：`importGraph` 控制 Host 导入图路由；`decisionSources` 是工作区相对路径（文件或目录），空数组关闭决策提示；入口 pattern 仅支持 `*`/`**`/`?`。P0 的校验器曾拒绝这些未知键，现已实现，不存在“配置了但未启用”的静默状态。
 
 patch 覆盖（整块替换，不深合并）：
 

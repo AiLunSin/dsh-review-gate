@@ -84,11 +84,13 @@ export function buildReviewUnits(files, options = {}) {
     const entryNames = component.filter(file => isEntry({ path: file })).map(basename)
     const unitKey = `entry:${normalize(entry.path)}`
     let imports = 0
+    for (const filePath of component) imports += edges.get(filePath)?.size ?? 0
     for (const filePath of component) {
-      imports += edges.get(filePath)?.size ?? 0
       const file = ordered.find(candidate => normalize(candidate.path) === filePath)
-      if (file !== undefined) assign(unitKey, file, entryNames, imports)
+      if (file !== undefined) assign(unitKey, file, entryNames, 0)
     }
+    const unit = units.get(unitKey)
+    if (unit !== undefined) unit.imports = imports
   }
 
   for (const file of ordered) {
