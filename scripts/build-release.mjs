@@ -91,10 +91,14 @@ async function main() {
 
   const clientFile = path.join(out, 'client.js')
   try {
-    const client = (await fsp.readFile(clientFile, 'utf8')).replace(/id:\s*'@ailunsin\/dsh-review-gate'/, `id: '${name}'`)
+    const client = (await fsp.readFile(clientFile, 'utf8'))
+      .replace(/id:\s*'@ailunsin\/dsh-review-gate'/g, `id: '${name}'`)
+      .replace(/const ID = '@ailunsin\/dsh-review-gate'/, `const ID = '${name}'`)
     await fsp.writeFile(clientFile, client)
-  } catch {
-    // Host-only P0 has no client module.
+    if (!client.includes(`const ID = '${name}'`)) throw new Error('client module id rewrite failed')
+  } catch (error) {
+    if (error instanceof Error && error.message === 'client module id rewrite failed') throw error
+    // Host-only builds have no client module.
   }
 
   const built = JSON.parse(await fsp.readFile(path.join(out, 'package.json'), 'utf8'))

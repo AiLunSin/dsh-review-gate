@@ -243,12 +243,18 @@ export function resolveConfig(raw) {
 
   const reviewInput = section(input.review, 'review')
   rejectUnknown(reviewInput, ['maxUnits', 'entryPatterns'], 'review.')
+  const entryPatterns = globArray(
+    reviewInput.entryPatterns === undefined ? DEFAULTS.review.entryPatterns : reviewInput.entryPatterns,
+    'review.entryPatterns',
+  )
+  for (const pattern of entryPatterns) {
+    if (/[!{}[\]]/.test(pattern)) {
+      fail(`review.entryPatterns entry ${JSON.stringify(pattern)} uses a construct the Client entry matcher does not support; use only *, ** and ?`)
+    }
+  }
   const review = {
     maxUnits: integer(reviewInput.maxUnits, 'review.maxUnits', 1, 20, DEFAULTS.review.maxUnits),
-    entryPatterns: globArray(
-      reviewInput.entryPatterns === undefined ? DEFAULTS.review.entryPatterns : reviewInput.entryPatterns,
-      'review.entryPatterns',
-    ),
+    entryPatterns,
   }
 
   return {

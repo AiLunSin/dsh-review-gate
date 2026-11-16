@@ -80,6 +80,9 @@ test('config: review settings are validated', () => {
   assert.deepEqual(config.review.entryPatterns, ['**/main.*'])
   assert.throws(() => resolveConfig({ review: { maxUnits: 0 } }), /review.maxUnits/)
   assert.throws(() => resolveConfig({ review: { entryPatterns: ['src/{a'] } }), /review.entryPatterns/)
+  assert.throws(() => resolveConfig({ review: { entryPatterns: ['src/{main,index}.*'] } }), /Client entry matcher/)
+  assert.throws(() => resolveConfig({ review: { entryPatterns: ['src/[ab].*'] } }), /Client entry matcher/)
+  assert.throws(() => resolveConfig({ review: { entryPatterns: ['!src/**'] } }), /Client entry matcher/)
   assert.throws(() => resolveConfig({ review: { unknown: true } }), /unknown key "review.unknown"/)
 })
 

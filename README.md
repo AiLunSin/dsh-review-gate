@@ -111,7 +111,7 @@ dsh plugin add @ailunsin/dsh-review-gate@0.2.0
       maxFileBytes: 8388608
     review:
       maxUnits: 5                # 审查单元上限（1–20）
-      entryPatterns:             # 入口文件启发式
+      entryPatterns:             # 入口文件启发式；仅支持 *, **, ?（{a,b}/[]/! 会被拒绝）
         - '**/index.*'
         - '**/main.*'
         - '**/app.*'
@@ -170,7 +170,7 @@ dsh plugin add @ailunsin/dsh-review-gate@0.2.0
 ## 开发
 
 ```text
-node --test "test/*.test.js"   # 116 tests
+node --test "test/*.test.js"   # 117 tests
 node e2e/run.mjs               # 真实 DSH headless：never 策略 + fs 安全网
 node e2e/approval.mjs          # 真实 DSH headless：ask → 拒绝 / ask → 允许 + approval 审计
 node scripts/check-syntax.mjs

@@ -57,9 +57,11 @@ test('projections: meta view is stable and carries the configured limits', async
   const ctx = { get: () => registry, logger: { warn() {} } }
   await registerReviewProjections(ctx, config)
   const meta = registry.definitions[1]
-  const first = meta.wire.view()
-  const second = meta.wire.view()
+  const state = meta.init()
+  const first = meta.wire.view(state)
+  const second = meta.wire.view(state)
   assert.equal(first, second)
+  assert.equal(first, state)
   assert.equal(first.maxUnits, 5)
   assert.ok(first.entryPatterns.includes('**/index.*'))
 })

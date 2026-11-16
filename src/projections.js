@@ -44,12 +44,13 @@ export const reviewMetaSchema = { parse: parseReviewMeta }
 export async function registerReviewProjections(ctx, config) {
   const registry = ctx.get?.('sessionProjections')
   if (registry === undefined || typeof registry.register !== 'function') return {}
-  const metaView = Object.freeze({
+  const metaState = Object.freeze({
     maxUnits: config.review.maxUnits,
     entryPatterns: Object.freeze([...config.review.entryPatterns]),
   })
+  let changesHandle
   try {
-    const changesHandle = await registry.register({
+    changesHandle = await registry.register({
       key: CHANGES_PROJECTION_KEY,
       stateVersion: 1,
       stateSchema: changesStateSchema,
@@ -66,20 +67,30 @@ export async function registerReviewProjections(ctx, config) {
         view: state => state,
       },
     })
+  } catch (error) {
+    ctx.logger?.warn?.('[review-gate] changes projection unavailable:', error)
+    return {}
+  }
+  try {
     const metaHandle = await registry.register({
       key: META_PROJECTION_KEY,
       stateVersion: 1,
-      stateSchema: { parse: () => ({}) },
-      init: () => ({}),
+      stateSchema: reviewMetaSchema,
+      init: () => metaState,
       apply: state => state,
       wire: {
         viewSchema: reviewMetaSchema,
-        view: () => metaView,
+        view: state => state,
       },
     })
     return { changesHandle, metaHandle }
   } catch (error) {
-    ctx.logger?.warn?.('[review-gate] review projections unavailable:', error)
+    ctx.logger?.warn?.('[review-gate] review meta projection unavailable:', error)
+    try {
+      await changesHandle.dispose()
+    } catch {
+      // The fiber can still release the first registration.
+    }
     return {}
   }
 }

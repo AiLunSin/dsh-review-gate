@@ -17,7 +17,7 @@
 | 2 | `fs/*-intent` 的 `actor` 是否含 agent/session | **含**。`actor` 就是 `ToolExecution`（有 `name`/`agent`/`callId`/`signal`）；内置观测策略用 `actor.agent.session` 做 owner。 | `dsh-tool-fs/src/write.ts:118-124`；`dsh-fs-observation-policy/src/index.ts:36-41` |
 | 3 | `displayReason` 是否多行、locale 如何解析 | **不是多行**：它是审批卡标题，`div.headline` 无 `white-space: pre-line`，换行会折叠。locale 键是 `en`/`zh`（不是 `zh-CN`）。 | `dsh-client-ui-approval/src/client/ApprovalPanel.tsx:9-18`；`ApprovalCard.tsx:72-74`；`ApprovalPanel.module.css:41-46`；`dsh-client-locale/src/client/index.ts:128-130, 215-221` |
 | 4 | `file_path` 相对路径的 cwd 来源 | **会话工作目录**：工具用 `workingDirectory.ensure(agent)`；`fs-local` 的 `displayPath` 解析为绝对路径。钩子里用 `workingDirectory.get(session)`（同步）/`session.header.cwd` 兜底。 | `dsh-tool-fs/src/session-cwd.ts:17-25`；`dsh-working-directory/src/index.ts:141-143, 154-175`；`dsh-fs-local/src/fsio.ts:162-168` |
-| 5 | Client 能否请求 `/api/changes.summary`（P1） | **已实现**：client.js 用 `useProjection('review-gate/changes')` 取 seq 后 `fetch('/api/changes.summary?...')`；与内置 deliverables 同一认证路由（源码核验）。 | `dsh-client-ui-deliverables/src/changes.ts:111-146`、`present-open.ts:26-29`；`client.js` 取数逻辑 |
+| 5 | Client 能否请求 `/api/changes.summary`（P1） | **已实现**：client.js 用 `useProjection('review-gate/changes')` 取 seq 后 `fetch('api/changes.summary?...')`（document-relative）；与内置 deliverables 同一认证路由（源码核验）。 | `dsh-client-ui-deliverables/src/changes.ts:111-146`、`present-open.ts:26-29`；`client.js` 取数逻辑 |
 | 6 | 侧栏页签 `kind:'session'` 实例语义（P1） | **已实现并验证**：`sidebar.right.pane.tab` 是 session-scope keyed slot；0.2.0 安装后 Client Inspect 的 occupants 含 `@ailunsin/dsh-review-gate`（active）。 | `dsh-client-ui-sidebar-right/src/client/index.ts:200-318`、`tab-registry.ts:94-120`；活体 Client Inspect |
 
 **架构影响：** 第 1–4 项决定 P0 的拦截与降级设计；第 5–6 项已随 P1 关闭。P1 采用方案 A（Client 请求内置 summary），未新增 Host 路由。
@@ -80,7 +80,7 @@ e2e: PASS pre-execute deny/allow + fs safety net + audit + no out-of-scope file
 
 | 项 | 结果 |
 |---|---|
-| 单元/集成测试 | `node --test "test/*.test.js"`：**116 passed / 0 failed**（glob、scope、rules、adapters、decide、audit、config、projection、client 分组/注册、plugin 生命周期、approval 回执、fs realpath 安全网、fs intent 委托） |
+| 单元/集成测试 | `node --test "test/*.test.js"`：**117 passed / 0 failed**（glob、scope、rules、adapters、decide、audit、config、projection、client 分组/注册/空态渲染、plugin 生命周期、approval 回执、fs realpath 安全网、fs intent 委托） |
 | 真实 DSH e2e | 两条均 PASS：`e2e/run.mjs`（never + fs 安全网）、`e2e/approval.mjs`（ask→拒绝 / ask→允许 + approval 审计） |
 | 决策性能基准 | 2,000 次范围内 write 决策，P95 < 50ms、均值 < 10ms（单测断言；本机实际远低于） |
 | 隐私 | 审计白名单丢弃 `content`/`old_string`；e2e 断言审计文本不含敏感源码 |

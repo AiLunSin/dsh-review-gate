@@ -13,7 +13,7 @@
 - `review` config section with `maxUnits` and `entryPatterns`.
 - Client module and `dsh.client` manifest; verified as an active tab body via
   live Client Inspect in the Desktop profile.
-- 116 tests, including client grouping and projection wire tests.
+- 117 tests, including client grouping/render-contract and projection wire tests.
 
 ## 0.1.0 — 2026-11-17
 

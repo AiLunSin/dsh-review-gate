@@ -129,7 +129,10 @@ window.__ModuleLoader__.load({
      * Compile the tiny entry-pattern subset the Host config uses (`**`, `*`, `?`).
      * @param {string} pattern
      */
+    const entryRegexCache = new Map()
     function entryPatternRegex(pattern) {
+      const cached = entryRegexCache.get(pattern)
+      if (cached !== undefined) return cached
       let source = '^'
       for (let index = 0; index < pattern.length; index += 1) {
         const char = pattern[index]
@@ -153,7 +156,9 @@ window.__ModuleLoader__.load({
           source += char
         }
       }
-      return new RegExp(`${source}$`, 'u')
+      const regex = new RegExp(`${source}$`, 'u')
+      entryRegexCache.set(pattern, regex)
+      return regex
     }
 
     /** @param {string} path @param {string[]} patterns */
@@ -186,7 +191,8 @@ window.__ModuleLoader__.load({
       for (const file of ordered) {
         const directory = dirname(file.path)
         const segments = directory === '' ? [] : directory.split('/')
-        const key = segments.length === 0 ? '.' : segments.slice(0, 2).join('/')
+        const depth = segments[0] === 'packages' || segments[0] === 'apps' || segments[0] === 'libs' ? 3 : 2
+        const key = segments.length === 0 ? '.' : segments.slice(0, depth).join('/')
         const list = groups.get(key) ?? []
         list.push(file)
         groups.set(key, list)
@@ -284,7 +290,7 @@ window.__ModuleLoader__.load({
         const controller = new AbortController()
         setState({ status: 'loading', data: null, error: null })
         const query = new URLSearchParams({ sessionId, seq: String(seq) })
-        fetch(`/api/changes.summary?${query.toString()}`, {
+        fetch(`api/changes.summary?${query.toString()}`, {
           signal: controller.signal,
           headers: { accept: 'application/json' },
           credentials: 'same-origin',

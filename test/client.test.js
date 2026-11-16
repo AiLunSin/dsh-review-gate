@@ -2,11 +2,22 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 const React = {
-  createElement: () => null,
-  useState: () => [undefined, () => {}],
+  createElement: (type, props, ...children) => ({ type, props: props ?? {}, children }),
+  useState: (initial) => {
+    const index = hookCursor++
+    if (!(index in hookStates)) hookStates[index] = typeof initial === 'function' ? initial() : initial
+    return [hookStates[index], (value) => { hookStates[index] = value }]
+  },
   useEffect: () => {},
   useMemo: factory => factory(),
   useRef: () => ({ current: undefined }),
+}
+
+let hookCursor = 0
+let hookStates = []
+function resetHooks() {
+  hookCursor = 0
+  hookStates = []
 }
 
 const modules = []
@@ -66,6 +77,19 @@ test('client: merges overflow into one final unit', () => {
   assert.equal(units[2].key, '__merged__')
   assert.equal(units[2].merged, 4)
   assert.ok(units[2].reasons.some(reason => reason.startsWith('merged:')))
+})
+
+test('client: empty-state render consumes the documented props', () => {
+  resetHooks()
+  const tree = plugin.__test.ReviewGateTab({
+    sessionId: 'session-1',
+    useProjection: () => undefined,
+    useTabInfo: () => ({ tab: { actions: { openResource() {} } } }),
+    t: key => key,
+  })
+  assert.equal(tree.type, 'div')
+  assert.match(JSON.stringify(tree), /emptyTitle/)
+  assert.match(JSON.stringify(tree), /emptyBody/)
 })
 
 test('client: apply registers the dictionary, tab type, and body', () => {

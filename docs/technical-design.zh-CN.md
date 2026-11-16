@@ -404,7 +404,7 @@ function approvalAvailability(ctx, agent): 'available' | 'never' | 'absent' {
   - `review-gate/meta`：输出配置的 `maxUnits` / `entryPatterns`；
   - `review-gate/scope` 同时改为 client-visible（顶部显示当前范围）。
 - **Client tab 类型**：`ctx.sidebarRightTabs.register({id:'@ailunsin/dsh-review-gate', kind:'review-gate', priority:'extension', guide:[…]})`；tab body 注册在 `sidebar.right.pane.tab` 的同一 key 下，使用 `useProjection`、`useTabInfo` 标准 props。
-- **取数**：Client 用 `useProjection('review-gate/changes')` 得到 seq，`fetch('/api/changes.summary?sessionId&seq')`（内置认证路由，方法 A），纯前端 `buildUnits` 分组。
+- **取数**：Client 用 `useProjection('review-gate/changes')` 得到 seq，`fetch('api/changes.summary?sessionId&seq')`（内置认证路由，方法 A；document-relative，与内置 deliverables 一致），纯前端 `buildUnits` 分组。
 - **跳转**：点击文件用 `tab.actions.openResource('dsh-resource://changes-review/session/<sid>/<seq>/<turn>', { params: { index } })` 打开内置 `changes-review`，不重绘 diff。
 - **验证**：Client bundle 已安装到当前 Desktop profile；Client Inspect 的 `sidebar.right.pane.tab` occupants 出现 `@ailunsin/dsh-review-gate`（active）。视觉/交互未人工验收。
 - **偏差**：未注册 Host 自有路由（方案 B），因此不需要额外鉴权；`review` 配置通过 projection 下发，不在 Client 重复读取 Host 配置。
@@ -443,7 +443,7 @@ function buildUnits(files: ChangedFile[], cfg: ReviewConfig): ReviewUnit[] {
 }
 ```
 
-- **P1 实际**：`topTwoSegments` + 入口文件名启发式（`index|main|app|server|cli|__init__|mod`）；入口单元优先，其次按改动量、路径排序。不做敏感命中/越界风险的混排（范围在页签顶部展示）。
+- **P1 实际**：`topTwoSegments` + 入口文件名启发式（`index|main|app|server|cli|__init__|mod`）；入口单元优先，其次按改动量、路径排序。入口 pattern 仅支持 `*`/`**`/`?`，Host 校验拒绝 `{a,b}`、`[]`、`!`，避免与 Client 匹配器不一致。不做敏感命中/越界风险的混排（范围在页签顶部展示）。
 - **有导入图**（P2）：对改动文件按 64KB 上限读取，正则抽取 `import/from/require`，相对说明符解析后建图。
 - `reasons` 实际产出："包含入口文件 X"、"改动量 +A/−D"、"二进制/超大文件"、"其余 N 个文件合并"。
 - 稳定性：输入按 path 排序后再分组，输出对同一输入恒定。
@@ -657,7 +657,7 @@ window.__ModuleLoader__.load({
 
 | 层级 | 内容 | 工具 |
 |---|---|---|
-| 单元 | glob 匹配表、行差集、规则匹配、决策矩阵、文案格式、路径归一化、配置校验、审查单元分组、projection wire | `node:test`（`test/*.test.js`，116 项） |
+| 单元 | glob 匹配表、行差集、规则匹配、决策矩阵、文案格式、路径归一化、配置校验、审查单元分组、projection wire | `node:test`（`test/*.test.js`，117 项） |
 | 集成 | 假 `ctx` 驱动 apply / pre-execute / fs 安全网 / guard / 卸载清理；审批桩覆盖 available/never/absent | `node:test` |
 | 端到端 | 真实 DSH headless：never + fs 安全网（`e2e/run.mjs`）；ask→reject / ask→allow + approval 审计（`e2e/approval.mjs`） | 真实 profile |
 | Client | Client Inspect 验证 tab body `@ailunsin/dsh-review-gate` 在 `sidebar.right.pane.tab` active；client.js 单测（工厂注册/分组） | 本机 Desktop profile |
