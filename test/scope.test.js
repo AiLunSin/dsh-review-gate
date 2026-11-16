@@ -85,6 +85,7 @@ test('scope: registration calls the projection registry with the durable key', a
   assert.ok(handle)
   assert.equal(registered.key, 'review-gate/scope')
   assert.equal(registered.stateVersion, 1)
+  assert.ok(registered.wire, 'scope must be client-visible for the P1 tab')
   assert.deepEqual(registered.init(), { globs: ['config/**'], source: 'config' })
   const state = registered.apply({ globs: [], source: 'none' }, {
     type: 'command/run',

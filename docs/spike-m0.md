@@ -5,7 +5,7 @@
 | 日期 | 2026-11-17 |
 | 基线 | DeepSeek Harness `0.2.2-rc.3`（Desktop ASAR 内包源码） |
 | 方法 | 读取已安装 ASAR 内 `@deepseek-ai/*` 源码与 README；真实 DSH headless 冒烟；单元/集成测试 |
-| 结论 | **P0 GO**：4 项架构前提已关闭；2 项 P1 依赖顺延到 M2（P0 不依赖） |
+| 结论 | **P0 GO + P1 注册验证**：6 项全部关闭；P1 侧栏 body 在 Desktop profile 中 active，视觉人工验收仍待做 |
 
 ---
 
@@ -17,10 +17,18 @@
 | 2 | `fs/*-intent` 的 `actor` 是否含 agent/session | **含**。`actor` 就是 `ToolExecution`（有 `name`/`agent`/`callId`/`signal`）；内置观测策略用 `actor.agent.session` 做 owner。 | `dsh-tool-fs/src/write.ts:118-124`；`dsh-fs-observation-policy/src/index.ts:36-41` |
 | 3 | `displayReason` 是否多行、locale 如何解析 | **不是多行**：它是审批卡标题，`div.headline` 无 `white-space: pre-line`，换行会折叠。locale 键是 `en`/`zh`（不是 `zh-CN`）。 | `dsh-client-ui-approval/src/client/ApprovalPanel.tsx:9-18`；`ApprovalCard.tsx:72-74`；`ApprovalPanel.module.css:41-46`；`dsh-client-locale/src/client/index.ts:128-130, 215-221` |
 | 4 | `file_path` 相对路径的 cwd 来源 | **会话工作目录**：工具用 `workingDirectory.ensure(agent)`；`fs-local` 的 `displayPath` 解析为绝对路径。钩子里用 `workingDirectory.get(session)`（同步）/`session.header.cwd` 兜底。 | `dsh-tool-fs/src/session-cwd.ts:17-25`；`dsh-working-directory/src/index.ts:141-143, 154-175`；`dsh-fs-local/src/fsio.ts:162-168` |
-| 5 | Client 能否请求 `/api/changes.summary`（P1） | **未在 P0 验证，顺延 M2**。源码显示 `ui-deliverables` 有内部路由与 `changes-review` 地址；P1 数据获取方案 A 依赖它。 | `dsh-client-ui-deliverables/src/changes.ts:111-146`、`review-definition.ts:38-49`；`dsh-workspace-changes/README.md:12,48` |
-| 6 | 侧栏页签 `kind:'session'` 实例语义（P1） | **未在 P0 验证，顺延 M2**。P0 不注册 Client，因此不阻塞发布。 | `dsh-client-ui-sidebar-right/src/client/tab-registry.ts:94-120`；模板 `templates/decoration/client.js` |
+| 5 | Client 能否请求 `/api/changes.summary`（P1） | **已实现**：client.js 用 `useProjection('review-gate/changes')` 取 seq 后 `fetch('/api/changes.summary?...')`；与内置 deliverables 同一认证路由（源码核验）。 | `dsh-client-ui-deliverables/src/changes.ts:111-146`、`present-open.ts:26-29`；`client.js` 取数逻辑 |
+| 6 | 侧栏页签 `kind:'session'` 实例语义（P1） | **已实现并验证**：`sidebar.right.pane.tab` 是 session-scope keyed slot；0.2.0 安装后 Client Inspect 的 occupants 含 `@ailunsin/dsh-review-gate`（active）。 | `dsh-client-ui-sidebar-right/src/client/index.ts:200-318`、`tab-registry.ts:94-120`；活体 Client Inspect |
 
-**架构影响：** 第 1–4 项决定 P0 的拦截与降级设计，均已关闭。第 5–6 项只影响 M2 审查编排；M2 开始前补测，失败则按设计 §9.1 的降级链处理（Host 路由 / 右栏单实例）。
+**架构影响：** 第 1–4 项决定 P0 的拦截与降级设计；第 5–6 项已随 P1 关闭。P1 采用方案 A（Client 请求内置 summary），未新增 Host 路由。
+
+### P1 Client 注册证据
+
+- 安装 `@ailunsin/dsh-review-gate@0.2.0` 到本机 Desktop profile，`install_bundle` 返回 `application: applied`。
+- `cordis_inspect_query`（Client）`Slots.listSubTree(root='sidebar.right.pane.tab')` 的 `occupants` 出现
+  `{key:'@ailunsin/dsh-review-gate', active:true}`。
+- Client bundle 在页面内注册了 `sidebarRightTabs` 类型（`kind:'review-gate'`）与 body；tab 类型注册失败会在 body 之前抛错，因此 active body 同时证明类型注册成功。
+- 视觉渲染、窄栏/浅深色与“点击文件跳转”的人工验收未完成。
 
 ---
 
@@ -72,7 +80,7 @@ e2e: PASS pre-execute deny/allow + fs safety net + audit + no out-of-scope file
 
 | 项 | 结果 |
 |---|---|
-| 单元/集成测试 | `node --test "test/*.test.js"`：**106 passed / 0 failed**（glob、scope、rules、adapters、decide、audit、config、plugin 生命周期、approval 回执、fs realpath 安全网、fs intent 委托） |
+| 单元/集成测试 | `node --test "test/*.test.js"`：**116 passed / 0 failed**（glob、scope、rules、adapters、decide、audit、config、projection、client 分组/注册、plugin 生命周期、approval 回执、fs realpath 安全网、fs intent 委托） |
 | 真实 DSH e2e | 两条均 PASS：`e2e/run.mjs`（never + fs 安全网）、`e2e/approval.mjs`（ask→拒绝 / ask→允许 + approval 审计） |
 | 决策性能基准 | 2,000 次范围内 write 决策，P95 < 50ms、均值 < 10ms（单测断言；本机实际远低于） |
 | 隐私 | 审计白名单丢弃 `content`/`old_string`；e2e 断言审计文本不含敏感源码 |
@@ -81,9 +89,10 @@ e2e: PASS pre-execute deny/allow + fs safety net + audit + no out-of-scope file
 
 ## 5. 未验证 / 已知限制（交付时保留）
 
-1. 真实浏览器里的审批标题渲染、浅色/深色主题、侧栏 UI：P0 无 Client，未验收。
+1. 真实浏览器里的浅色/深色、窄栏布局与点击跳转：P1 tab body 已通过 Client Inspect 确认 active，但视觉/交互未人工验收。
 2. 真实 Web `ApprovalPanel` 的人工点击/渲染未验收；但真实 DSH 审批管道已用 fake answerer 覆盖 ask→`rejected` 与 ask→`allowed-once`（`e2e/approval.mjs`），包括 `approval/asked`/`decided` 与插件审计回执。
 3. `bash` / `pwsh` / MCP / 绕过 `fs/*-intent` 的写入不拦截。
 4. 子 Agent：全局 pre-execute 会覆盖其调用；`fork` 复制父前缀（含 `command/run`）所以继承范围，`spawn` 子 Agent 是新会话、不自动继承父范围（P0 未做显式继承）。
 5. 大文件/远程 fs：`readText` 无 `maxBytes` 参数，依赖 `stat.size` 上限；后端不报 size 时可能先整读再丢弃。
 6. 审批不可用但服务存在且无 answerer 时，`allow` 降级不生效（见 §3.6）。
+7. P1 只显示当前会话最近一次 `workspace/changes`；分组是目录/入口启发式，无导入图；单元排序不含敏感/越界状态（范围在顶部展示）。

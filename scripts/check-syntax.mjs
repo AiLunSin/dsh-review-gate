@@ -30,6 +30,9 @@ for (const relative of roots) {
     // Optional directories (e2e is present in the repo, absent in some checkouts).
   }
 }
+if (statSync(path.join(root, 'client.js'), { throwIfNoEntry: false })?.isFile()) {
+  jsFiles.push(path.join(root, 'client.js'))
+}
 
 for (const file of jsFiles) {
   execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' })
@@ -50,6 +53,7 @@ if (!pkg.exports?.['.']) throw new Error('package.json must export "."')
 if (pkg.dsh?.client !== undefined) {
   if (!pkg.exports?.['./client']) throw new Error('dsh.client requires the ./client export')
   if (!pkg.files?.includes('client.js')) throw new Error('dsh.client requires client.js in files')
+  readFileSync(path.join(root, 'client.js'), 'utf8')
 }
 for (const required of ['index.js', 'LICENSE', 'README.md', 'cordis.patch.yml', 'icon.svg']) {
   const full = required === 'index.js' ? path.join(root, 'src', 'index.js') : path.join(root, required)

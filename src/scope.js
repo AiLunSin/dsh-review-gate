@@ -129,6 +129,10 @@ export async function registerScopeProjection(ctx, config) {
       stateSchema: scopeStateSchema,
       init: () => initialScopeState(config),
       apply: (state, event) => applyScopeEvent(state, event),
+      wire: {
+        viewSchema: scopeStateSchema,
+        view: state => state,
+      },
     })
   } catch (error) {
     ctx.logger?.warn?.('[review-gate] scope projection unavailable:', error)

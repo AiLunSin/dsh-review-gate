@@ -53,6 +53,18 @@ export const DEFAULTS = Object.freeze({
     dir: '',
     maxFileBytes: 8_388_608,
   }),
+  review: Object.freeze({
+    maxUnits: 5,
+    entryPatterns: Object.freeze([
+      '**/index.*',
+      '**/main.*',
+      '**/app.*',
+      '**/server.*',
+      '**/cli.*',
+      '**/__init__.py',
+      '**/mod.*',
+    ]),
+  }),
 })
 
 /** @param {string} message @returns {never} */
@@ -170,7 +182,7 @@ function customRules(value, field) {
 export function resolveConfig(raw) {
   if (raw !== undefined && raw !== null && !isPlainObject(raw)) fail('config must be an object')
   const input = raw ?? {}
-  rejectUnknown(input, ['enabled', 'locale', 'scope', 'rules', 'protectedPaths', 'onApprovalUnavailable', 'onInternalError', 'limits', 'audit'], '')
+  rejectUnknown(input, ['enabled', 'locale', 'scope', 'rules', 'protectedPaths', 'onApprovalUnavailable', 'onInternalError', 'limits', 'audit', 'review'], '')
 
   const scopeInput = section(input.scope, 'scope')
   rejectUnknown(scopeInput, ['enforce', 'strict', 'default', 'caseSensitive'], 'scope.')
@@ -229,6 +241,16 @@ export function resolveConfig(raw) {
     maxFileBytes: integer(auditInput.maxFileBytes, 'audit.maxFileBytes', 65_536, 104_857_600, DEFAULTS.audit.maxFileBytes),
   }
 
+  const reviewInput = section(input.review, 'review')
+  rejectUnknown(reviewInput, ['maxUnits', 'entryPatterns'], 'review.')
+  const review = {
+    maxUnits: integer(reviewInput.maxUnits, 'review.maxUnits', 1, 20, DEFAULTS.review.maxUnits),
+    entryPatterns: globArray(
+      reviewInput.entryPatterns === undefined ? DEFAULTS.review.entryPatterns : reviewInput.entryPatterns,
+      'review.entryPatterns',
+    ),
+  }
+
   return {
     enabled: bool(input.enabled, 'enabled', DEFAULTS.enabled),
     locale: oneOf(input.locale, 'locale', LOCALES, DEFAULTS.locale),
@@ -249,5 +271,6 @@ export function resolveConfig(raw) {
     ),
     limits,
     audit,
+    review,
   }
 }

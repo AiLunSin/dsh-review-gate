@@ -1,6 +1,6 @@
 {
   "name": "@ailunsin/dsh-review-gate",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Deterministic pre-write scope gate and review sequencing for DeepSeek Harness",
   "license": "MIT",
   "author": "AiLunSin",
@@ -32,12 +32,14 @@
   },
   "exports": {
     ".": "./src/index.js",
+    "./client": "./client.js",
     "./package.json": "./package.json",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"
   },
   "files": [
     "src",
+    "client.js",
     "cordis.patch.yml",
     "locale",
     "icon.svg",
@@ -60,6 +62,13 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": false,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
     }
   }
 }

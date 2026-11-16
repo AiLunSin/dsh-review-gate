@@ -35,6 +35,11 @@ test('plugin: apply registers the projection, command, gate, guard, and fs safet
   assert.equal(host.guards.length, 1)
   assert.ok(host.projectionDefinition)
   assert.equal(host.projectionDefinition.key, 'review-gate/scope')
+  assert.deepEqual(host.projectionDefinitions.map(definition => definition.key), [
+    'review-gate/scope',
+    'review-gate/changes',
+    'review-gate/meta',
+  ])
 })
 
 test('plugin: out-of-scope write asks through pre-execute with both locales', async () => {

@@ -20,6 +20,7 @@ import {
   installPreExecute,
 } from './interceptors.js'
 import { resolveHostLocale } from './locale.js'
+import { registerReviewProjections } from './projections.js'
 import { resolveRuleset } from './rules.js'
 import { registerScopeProjection } from './scope.js'
 
@@ -76,6 +77,17 @@ export async function apply(ctx, rawConfig) {
       if (commands === undefined || typeof commands.register !== 'function') return
       const definition = createReviewScopeCommand({ config, locale, scopeHandle })
       scope.effect(() => commands.register(definition), 'review-gate: /review-scope')
+    })
+  }
+
+  const reviewProjections = await registerReviewProjections(ctx, config)
+  if (reviewProjections.changesHandle === undefined) {
+    audit.record({
+      v: 1,
+      ts: new Date().toISOString(),
+      type: 'degraded',
+      decision: 'allow',
+      reason: 'review-projection-unavailable',
     })
   }
 

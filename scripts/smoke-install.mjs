@@ -27,10 +27,15 @@ if (pkg.name !== '@ailunsin/dsh-review-gate') fail(`unexpected package name: ${p
 if (pkg.private === true) fail('built package must not be private')
 if (pkg.engines?.dsh !== '0.2.2-rc.3') fail(`unexpected engines.dsh: ${pkg.engines?.dsh}`)
 if (pkg.dsh?.bundle?.patch !== './cordis.patch.yml') fail('missing dsh.bundle.patch')
-if (pkg.dsh?.client !== undefined && !pkg.exports?.['./client']) fail('dsh.client without ./client export')
+if (pkg.dsh?.client !== undefined) {
+  if (!pkg.exports?.['./client']) fail('dsh.client without ./client export')
+  if (!existsSync(path.join(distDir, 'client.js'))) fail('dsh.client without client.js')
+  if (!pkg.files?.includes('client.js')) fail('client.js is not in the published files list')
+}
 
 for (const file of [
   'src/index.js',
+  'client.js',
   'cordis.patch.yml',
   'locale/en.json',
   'locale/zh.json',
@@ -47,7 +52,7 @@ for (const file of [
 
 // A stale dist shipped pre-fix code once; compare the copied runtime sources with
 // the checkout before declaring the artifact publishable.
-for (const file of ['src/index.js', 'src/interceptors.js', 'src/decide.js', 'src/glob.js', 'src/adapters.js', 'src/rules.js']) {
+for (const file of ['src/index.js', 'src/interceptors.js', 'src/decide.js', 'src/glob.js', 'src/adapters.js', 'src/rules.js', 'client.js']) {
   const source = readFileSync(path.join(root, file))
   const built = readFileSync(path.join(distDir, file))
   if (!source.equals(built)) fail(`stale build: ${file} differs from the checkout (re-run build:release)`)

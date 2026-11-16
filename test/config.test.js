@@ -17,6 +17,8 @@ test('config: defaults are usable without any config', () => {
   assert.equal(config.onInternalError, 'allow')
   assert.equal(config.limits.preExecuteMs, 80)
   assert.equal(config.audit.enabled, true)
+  assert.equal(config.review.maxUnits, 5)
+  assert.ok(config.review.entryPatterns.includes('**/index.*'))
 })
 
 test('config: unknown keys fail loudly at every level', () => {
@@ -70,6 +72,15 @@ test('config: custom rules are validated and normalized', () => {
   assert.throws(() => resolveConfig({ rules: { custom: [{ id: 'RG-X', patterns: [] }] } }), /patterns must not be empty/)
   assert.throws(() => resolveConfig({ rules: { custom: [{ id: 'RG-X', patterns: ['('] }] } }), /not a valid regular expression/)
   assert.throws(() => resolveConfig({ rules: { custom: [{ id: 'RG-X', patterns: ['(a+)+'] }] } }), /catastrophically/)
+})
+
+test('config: review settings are validated', () => {
+  const config = resolveConfig({ review: { maxUnits: 2, entryPatterns: ['**/main.*'] } })
+  assert.equal(config.review.maxUnits, 2)
+  assert.deepEqual(config.review.entryPatterns, ['**/main.*'])
+  assert.throws(() => resolveConfig({ review: { maxUnits: 0 } }), /review.maxUnits/)
+  assert.throws(() => resolveConfig({ review: { entryPatterns: ['src/{a'] } }), /review.entryPatterns/)
+  assert.throws(() => resolveConfig({ review: { unknown: true } }), /unknown key "review.unknown"/)
 })
 
 test('config: explicit empty arrays are preserved', () => {

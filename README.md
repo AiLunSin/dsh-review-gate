@@ -1,6 +1,6 @@
 # dsh-review-gate
 
-> **状态：P0 已实现，真实 DSH `0.2.2-rc.3` headless 冒烟通过。** 发布名为 `@ailunsin/dsh-review-gate`（npm 上无 scope 的 `dsh-review-gate` 已被无关项目占用）。P1 审查编排（侧栏页签、顺序导航）尚未实现。
+> **状态：P0 + P1 已实现（0.2.0）。** P0 通过真实 DSH `0.2.2-rc.3` headless 冒烟；P1 侧栏“审查顺序”页签已注册到当前 Desktop profile，并在 Client Inspect 中确认 active。发布名为 `@ailunsin/dsh-review-gate`（npm 上无 scope 的 `dsh-review-gate` 已被无关项目占用）。P2（导入图分组、决策源标注）尚未实现。
 
 **给 DeepSeek Harness 加上"写入前的确定性边界"和"写入后的审查顺序"。**
 
@@ -15,16 +15,16 @@
 | 你只让 AI 修 `src/auth/`，它顺手改了 `src/utils/` | 你事后在 diff 里发现 | 写入前判定：范围内静默，越界 `ask` 或 `deny` |
 | 重构时删掉了 `if (!user.hasPermission(...))` | 靠人肉逐行比对 | 确定性规则命中，阻断或询问 |
 | 事后被问"这条删除为什么放行" | 无法举证 | 一行一条审计：规则 ID、路径、决策、耗时 |
-| 一轮改了 12 个文件 | 平铺列表，先看哪个？ | 3–5 个审查单元，入口优先（P1） |
+| 一轮改了 12 个文件 | 平铺列表，先看哪个？ | **3–5 个审查单元，入口优先，上/下一组** |
 
 ## 与 diff 类插件的分工
 
 | | diff 类插件（含 DSH 内置改动卡） | dsh-review-gate |
 |---|---|---|
-| 介入时机 | 修改后 | **修改前控制**（P0） |
-| 审查对象 | 代码差异 | **边界、规则、顺序** |
-| 判断方式 | 人读 / LLM | **确定性规则** |
-| 渲染 diff | 自己实现 | **跳转内置 `changes-review` 页签，不重绘**（P1） |
+| 介入时机 | 修改后 | 修改前控制 + 修改后顺序 |
+| 审查对象 | 代码差异 | 边界、规则、顺序 |
+| 判断方式 | 人读 / LLM | 确定性规则 + 确定性分组 |
+| 渲染 diff | 自己实现 | 跳转内置 `changes-review` 页签，不重绘 |
 
 我们不做：diff 渲染、预测 diff、确认式放行、LLM 代码质量评审、通用 hooks 运行时。
 
@@ -38,7 +38,7 @@
 dsh plugin add C:\Users\11403\Desktop\one_too
 
 # npm 发布后：
-dsh plugin add @ailunsin/dsh-review-gate@0.1.0
+dsh plugin add @ailunsin/dsh-review-gate@0.2.0
 ```
 
 安装后在新会话里检查 **Plugins** 中的 **Review gate** 行；改配置后按 DSH 的提示重启或让 HMR 生效。
@@ -59,6 +59,17 @@ dsh plugin add @ailunsin/dsh-review-gate@0.1.0
 - `/review-scope` → 回显当前范围；`/review-scope clear` → 清除
 
 **未声明范围 = 放行但审计**（`unscoped=true`）。这是刻意选择：装上就处处弹窗的插件没人用。
+
+### 审查顺序页签（P1）
+
+右栏的 guide（右侧栏 “+” / guide 页）里会有 **审查顺序** 入口。打开后：
+
+- 读取当前会话最近一次 `workspace/changes`（第 N 轮），拉取 Host 的改动摘要；
+- 按目录/入口启发式分成 **3–5 个审查单元**，入口文件优先；
+- 上/下一组切换；点击文件跳到内置 **changes-review** 页签，不重绘 diff；
+- 顶部显示当前 `/review-scope` 范围；没有改动时显示空状态。
+
+数据只读、无正文；没有改动记录时不会请求 Host。
 
 ## 配置
 
@@ -98,6 +109,16 @@ dsh plugin add @ailunsin/dsh-review-gate@0.1.0
       enabled: true
       dir: ''                    # 空 = $DSH_HOME/review-gate/audit
       maxFileBytes: 8388608
+    review:
+      maxUnits: 5                # 审查单元上限（1–20）
+      entryPatterns:             # 入口文件启发式
+        - '**/index.*'
+        - '**/main.*'
+        - '**/app.*'
+        - '**/server.*'
+        - '**/cli.*'
+        - '**/__init__.py'
+        - '**/mod.*'
 ```
 
 未知字段、非法枚举、非法 glob 在插件激活时**直接报错**，不会静默忽略。
@@ -137,18 +158,19 @@ dsh plugin add @ailunsin/dsh-review-gate@0.1.0
 5. **审批服务存在但无 answerer 时**（headless / 无 UI），`ask` 由 DSH 管道 fail-closed 成拒绝；`onApprovalUnavailable: allow` 只能覆盖"无审批服务 / 策略 never"两种可判定情形。
 6. **子 Agent / fork**：`fork` 会复制父会话前缀（含 `command/run`），因此范围随 fork 继承；`spawn` 子 Agent 是新会话，scope 取自子会话自身，不自动继承父范围。全局 pre-execute 会拦子 Agent 的写入。
 7. **符号链接 / `~`**：主门通过 `ctx.fs.resolve` 使用扩展后的绝对路径与后端 realpath 判定；同步 `tools.guard` 仍只能按词法路径，作为最后防线。需要符号链接级硬边界时配合 DSH 沙箱。
-8. P1 的审查单元/顺序导航依赖内置 `changes-review` 与 `/api/changes.*`，尚未实现与验证。
+8. **P1 审查顺序**：只取当前会话最近一次 `workspace/changes`；分组是“目录 + 入口文件”启发式，不做导入图（P2）；单元风险目前用改动量/二进制/入口代理，不把敏感规则或越界状态混进排序（范围在页签顶部显示）。依赖内置 `/api/changes.summary` 与 `changes-review` 页签，版本升级需回归。
 
 ## 兼容性
 
 - DSH `0.2.2-rc.3`（`engines.dsh` 精确锁定；DSH 发版后同步验证升级）。
-- 要求 profile 组成 `@deepseek-ai/dsh-session-projection`（shipped `dsh-base` 已包含）；没有该服务时插件不会激活，而不是静默降级。
+- Host 要求 profile 组成 `@deepseek-ai/dsh-session-projection`（shipped `dsh-base` 已包含）；没有该服务时插件不会激活，而不是静默降级。
+- Client 页签要求 `@deepseek-ai/dsh-client-ui-sidebar-right` 与内置 `changes-review` 类型；P1 已在当前 Desktop profile 完成 Client Inspect 注册验证。
 - `commands` / `fs` / `approval` 是可选服务：缺失时 `/review-scope`、fs 安全网或审批降级分别不可用，但配置默认范围与规则仍然工作。
 
 ## 开发
 
 ```text
-node --test "test/*.test.js"   # 106 tests
+node --test "test/*.test.js"   # 116 tests
 node e2e/run.mjs               # 真实 DSH headless：never 策略 + fs 安全网
 node e2e/approval.mjs          # 真实 DSH headless：ask → 拒绝 / ask → 允许 + approval 审计
 node scripts/check-syntax.mjs
@@ -172,9 +194,9 @@ node scripts/build-release.mjs --name @ailunsin/dsh-review-gate
 - [x] 需求分析（v0.2，已按 DSH 0.2.2-rc.3 源码核验）
 - [x] 技术方案（v0.2）
 - [x] 决策定稿（D1–D4，F-13/F-14 砍掉）
-- [x] M0 技术验证（4/6 关闭，2 项 P1 顺延）
+- [x] M0 技术验证（6/6 关闭；第 5/6 项在 P1 落地）
 - [x] M1 P0：范围门 + 敏感删除 + 审计 + 审批文案 + fs 安全网
-- [ ] M2 P1：审查单元与顺序导航（侧栏页签）
+- [x] M2 P1：审查单元与顺序导航（侧栏页签、Client 注册已验证）
 - [ ] M3 P2：导入图分组、决策源标注
 
 ## 文档

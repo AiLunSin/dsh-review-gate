@@ -26,6 +26,7 @@ export function createFakeHost(options = {}) {
   const commands = []
   let scopeState = options.scopeState ?? { globs: [], source: 'none' }
   let projectionDefinition
+  const projectionDefinitions = []
 
   const ctx = {
     get(service) {
@@ -45,7 +46,8 @@ export function createFakeHost(options = {}) {
       if (service === 'sessionProjections') {
         return {
           async register(definition) {
-            projectionDefinition = definition
+            if (projectionDefinition === undefined) projectionDefinition = definition
+            projectionDefinitions.push(definition)
             return {
               stateOf: () => scopeState,
               dispose: async () => {},
@@ -110,6 +112,7 @@ export function createFakeHost(options = {}) {
     guards,
     listeners,
     get projectionDefinition() { return projectionDefinition },
+    get projectionDefinitions() { return projectionDefinitions },
     setScope(next) { scopeState = next },
     getScope() { return scopeState },
     listenersFor(name) { return listeners.get(name) ?? [] },

@@ -381,7 +381,7 @@ function approvalAvailability(ctx, agent): 'available' | 'never' | 'absent' {
   "durationMs": 7.3,
   "degraded": false,
   "dshVersion": "0.2.2-rc.3",
-  "pluginVersion": "0.1.0"
+  "pluginVersion": "0.2.0"
 }
 ```
 
@@ -396,6 +396,18 @@ function approvalAvailability(ctx, agent): 'available' | 'never' | 'absent' {
 ---
 
 ## 9. P1 审查编排
+
+### 9.0 v0.2.0 实际实现
+
+- **数据路径 A 落地**：Host 注册两个 client-visible projection：
+  - `review-gate/changes`：折叠最近的 `workspace/changes`，输出 `{seq,turn}`；
+  - `review-gate/meta`：输出配置的 `maxUnits` / `entryPatterns`；
+  - `review-gate/scope` 同时改为 client-visible（顶部显示当前范围）。
+- **Client tab 类型**：`ctx.sidebarRightTabs.register({id:'@ailunsin/dsh-review-gate', kind:'review-gate', priority:'extension', guide:[…]})`；tab body 注册在 `sidebar.right.pane.tab` 的同一 key 下，使用 `useProjection`、`useTabInfo` 标准 props。
+- **取数**：Client 用 `useProjection('review-gate/changes')` 得到 seq，`fetch('/api/changes.summary?sessionId&seq')`（内置认证路由，方法 A），纯前端 `buildUnits` 分组。
+- **跳转**：点击文件用 `tab.actions.openResource('dsh-resource://changes-review/session/<sid>/<seq>/<turn>', { params: { index } })` 打开内置 `changes-review`，不重绘 diff。
+- **验证**：Client bundle 已安装到当前 Desktop profile；Client Inspect 的 `sidebar.right.pane.tab` occupants 出现 `@ailunsin/dsh-review-gate`（active）。视觉/交互未人工验收。
+- **偏差**：未注册 Host 自有路由（方案 B），因此不需要额外鉴权；`review` 配置通过 projection 下发，不在 Client 重复读取 Host 配置。
 
 ### 9.1 数据获取（两条路径，先 A 后 B）
 
@@ -431,21 +443,21 @@ function buildUnits(files: ChangedFile[], cfg: ReviewConfig): ReviewUnit[] {
 }
 ```
 
-- **无导入图**（P1）：`topTwoSegments` + 入口文件名启发式（`index|main|app|server|cli|__init__|mod`）。
+- **P1 实际**：`topTwoSegments` + 入口文件名启发式（`index|main|app|server|cli|__init__|mod`）；入口单元优先，其次按改动量、路径排序。不做敏感命中/越界风险的混排（范围在页签顶部展示）。
 - **有导入图**（P2）：对改动文件按 64KB 上限读取，正则抽取 `import/from/require`，相对说明符解析后建图。
-- `reasons` 产出人类可读句子："入口文件 `src/server.ts` 依赖本组 3 个文件"、"包含 2 处敏感规则命中"。
+- `reasons` 实际产出："包含入口文件 X"、"改动量 +A/−D"、"二进制/超大文件"、"其余 N 个文件合并"。
 - 稳定性：输入按 path 排序后再分组，输出对同一输入恒定。
 
-### 9.3 侧栏页签
+### 9.3 侧栏页签（实际）
 
 | 区块 | 内容 |
 |---|---|
-| 范围状态 | 当前 globs、来源（命令/配置/未声明）、`/review-scope` 提示 |
-| 本轮审查单元 | 单元卡：标题、文件数、`+/-`、风险徽标、`reasons`、上/下一组 |
-| 单元内文件 | 点击 → `ctx.sidebarRight.openResource('dsh-resource://changes-review/session/<sid>/<seq>/<turn>', { params: { index } })` |
-| 告警 | 越界被拦、规则命中、数据不可用 |
+| 范围状态 | 顶部显示当前 globs、来源（命令/配置/未声明） |
+| 本轮审查单元 | 单元 chips + 当前单元卡：标题、`+/-`、`reasons`、上/下一组 |
+| 单元内文件 | 点击 → `tab.actions.openResource('dsh-resource://changes-review/session/<sid>/<seq>/<turn>', { params: { index } })` |
+| 状态 | 空（本轮无改动）、加载、404（Host 不再提供）、错误 + 重试 |
 
-UI 约束：只用 `--dsw-alias-*` 主题 token；文案走 client locale；组件挂在 `sidebar.right.pane.tab`，注册 `ctx.sidebarRightTabs.register({ id: 'review-gate', kind: 'session', title, ... })`。
+UI 约束：只用 `--dsw-alias-*` 主题 token；文案走 client locale；tab 类型 `id` 为包名、`kind: 'review-gate'`，guide 入口 title/description 均本地化。
 
 ---
 
@@ -503,11 +515,12 @@ patch 覆盖（整块替换，不深合并）：
 dsh-review-gate/
 ├─ package.json
 ├─ cordis.patch.yml
-├─ src/                     # 无构建：这些就是运行文件
+├─ src/
 │  ├─ index.js              # Host 入口（ESM，apply(ctx, config)）
 │  ├─ config.js             # 手写校验
 │  ├─ glob.js               # 零依赖 glob
 │  ├─ scope.js              # command 解析 + session projection
+│  ├─ projections.js        # review-gate/changes / meta
 │  ├─ commands.js
 │  ├─ adapters.js
 │  ├─ rules.js
@@ -516,6 +529,7 @@ dsh-review-gate/
 │  ├─ interceptors.js       # pre-execute / fs 安全网 / guard / approval 回执
 │  ├─ locale.js
 │  └─ util.js
+├─ client.js               # lazy-CJS Web 半：审查顺序页签
 ├─ locale/{en,zh}.json
 ├─ icon.svg
 ├─ docs/                    # 需求、技术方案、决策、M0、发布
@@ -531,24 +545,26 @@ dsh-review-gate/
 ```json
 {
   "name": "@ailunsin/dsh-review-gate",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Deterministic pre-write scope gate and review sequencing for DeepSeek Harness",
   "license": "MIT",
   "engines": { "dsh": "0.2.2-rc.3" },
   "exports": {
     ".": "./src/index.js",
+    "./client": "./client.js",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"
   },
-  "files": ["src", "cordis.patch.yml", "locale", "icon.svg", "docs", "README.md", "LICENSE", "SECURITY.md", "CHANGELOG.md"],
+  "files": ["src", "client.js", "cordis.patch.yml", "locale", "icon.svg", "docs", "README.md", "LICENSE", "SECURITY.md", "CHANGELOG.md"],
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" }
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "platform": "web", "immediately": false, "inject": ["@deepseek-ai/dsh-client-ui-sidebar-right"] }
   }
 }
 ```
 
-> 无 scope 的 `dsh-review-gate` 已被无关项目占用，npm 发布名固定为 `@ailunsin/dsh-review-gate`；仓库短名与插件行 id 仍为 `review-gate`。P0 是 Host-only bundle；P1 才加 `./client`、`dsh.client` 与侧栏页签。
+> 无 scope 的 `dsh-review-gate` 已被无关项目占用，npm 发布名固定为 `@ailunsin/dsh-review-gate`；仓库短名与插件行 id 仍为 `review-gate`。P1 已加 `./client`、`dsh.client` 与侧栏审查顺序页签。
 
 ```yaml
 # cordis.patch.yml
@@ -561,29 +577,31 @@ dsh-review-gate/
           enforce: true
 ```
 
-P1 的 `client.js` 仍按 lazy-CJS factory 编写（模板见 `dsh-doc`），届时补 `./client` 导出、`dsh.client` 字段与 `client.js` 文件清单。P0 不注册任何 Client 代码。
+P1 的 `client.js` 按 lazy-CJS factory 编写（模板见 `dsh-doc`），已补 `./client` 导出、`dsh.client` 字段与 `client.js` 文件清单。实际注册如下（简化）：
 
 ```js
-// client.js —— 必须是 lazy-CJS factory
 window.__ModuleLoader__.load({
-  id: 'dsh-review-gate',
+  id: '@ailunsin/dsh-review-gate',
   factory(require) {
     const React = require('react')
-    const NS = 'review-gate'
-    function ReviewTab() { /* 由 sidebar.right.pane.tab 的 props 驱动 */ }
+    const NS = 'reviewGate'
+    function ReviewTab() { /* 使用 useProjection / useTabInfo */ }
 
     return {
-      inject: ['slots', 'sidebarRightTabs'],
+      inject: ['slots', 'locale', 'sidebarRightTabs'],
       apply(ctx) {
         const t = ctx.locale.bind(NS)
+        ctx.effect(() => ctx.locale.register(NS, { en: EN, zh: ZH }), 'review-gate: dictionaries')
         ctx.effect(() => ctx.sidebarRightTabs.register({
-          id: 'review-gate',
-          kind: 'session',
-          title: () => t('tab.title'),
+          id: '@ailunsin/dsh-review-gate',
+          kind: 'review-gate',
+          priority: 'extension',
+          title: () => t('title'),
+          guide: [{ id: 'review-gate', order: 60, title: () => t('guideTitle'), description: () => t('guideDescription') }],
         }), 'review-gate: tab type')
         ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
           name: 'sidebar.right.pane.tab',
-          key: 'review-gate',
+          key: '@ailunsin/dsh-review-gate',
           locale: NS,
         }, ReviewTab)), 'review-gate: tab body')
       },
@@ -639,9 +657,10 @@ window.__ModuleLoader__.load({
 
 | 层级 | 内容 | 工具 |
 |---|---|---|
-| 单元 | glob 匹配表、行差集、规则匹配、决策矩阵、文案格式、路径归一化、配置校验 | `node:test`（`test/*.test.js`，106 项） |
+| 单元 | glob 匹配表、行差集、规则匹配、决策矩阵、文案格式、路径归一化、配置校验、审查单元分组、projection wire | `node:test`（`test/*.test.js`，116 项） |
 | 集成 | 假 `ctx` 驱动 apply / pre-execute / fs 安全网 / guard / 卸载清理；审批桩覆盖 available/never/absent | `node:test` |
 | 端到端 | 真实 DSH headless：never + fs 安全网（`e2e/run.mjs`）；ask→reject / ask→allow + approval 审计（`e2e/approval.mjs`） | 真实 profile |
+| Client | Client Inspect 验证 tab body `@ailunsin/dsh-review-gate` 在 `sidebar.right.pane.tab` active；client.js 单测（工厂注册/分组） | 本机 Desktop profile |
 | 性能 | 2,000 次范围内 write 决策，断言均值 < 10ms、P95 < 50ms | `node:test` |
 | 回归 | 每次 DSH 升级跑 `npm test` + `npm run e2e` | 本机 / 未来 CI 手动 |
 
@@ -661,7 +680,7 @@ window.__ModuleLoader__.load({
 |---|---|---|
 | 本地目录 | 插件管理器 `install_bundle` 的目标填绝对路径 | 开发调试 |
 | Git | `install_bundle` 支持 `github:owner/repo`、`git+https://…`、`https://host/owner/repo` | 尝鲜用户 |
-| npm | `@ailunsin/dsh-review-gate@0.1.0` | 正式分发 |
+| npm | `@ailunsin/dsh-review-gate@0.2.0` | 正式分发 |
 | 市场索引 | 自建 `index.json`（HTTPS）→ 用户添加索引 URL | 曝光 |
 
 ### 15.3 npm 与版本兼容
@@ -734,8 +753,8 @@ window.__ModuleLoader__.load({
 | 2 | `fs/*-intent` 的 `actor` 是否含 agent/session | 是（`ToolExecution`） | 否 |
 | 3 | `displayReason` 是否多行显示、locale 如何解析 | 单行标题；键为 `en`/`zh` | 是：压缩成单行 |
 | 4 | `file_path` 相对路径的 cwd 来源 | `workingDirectory.ensure`（工具）/`get`（钩子）+ header 兜底 | 否 |
-| 5 | Client 能否请求 `/api/changes.summary` | **P1 顺延，未实测** | M2 开始时验证；失败走 Host 路由 |
-| 6 | 侧栏页签 `kind:'session'` 实例语义 | **P1 顺延，未实测** | M2 开始时验证 |
+| 5 | Client 能否请求 `/api/changes.summary` | **已实现**：client.js 用 `useProjection('review-gate/changes')` 得 seq，`fetch('/api/changes.summary?...')`；与内置 deliverables 同路由（源码核验） | 未走 Host 路由 |
+| 6 | 侧栏页签 `kind:'session'` 实例语义 | **已实现并验证**：`sidebar.right.pane.tab` 为 session-scope keyed slot；安装 0.2.0 后 Client Inspect occupants 含 `@ailunsin/dsh-review-gate`（active） | 无 |
 
 完整证据与运行时结果见 [`docs/spike-m0.md`](spike-m0.md)。
 
@@ -744,8 +763,10 @@ window.__ModuleLoader__.load({
 ## 19. 已知限制（README 已写明）
 
 1. 只约束 `write`/`edit`/`apply_patch`/`str_replace_editor`；`bash` / `pwsh` / MCP 直接写文件不受控。`fs/*-intent` 安全网只覆盖主动经过该事件的文件工具；需要硬边界时配合沙箱模式。
-2. 审批请求不携带参数，用户只能看到插件生成的单行 `displayReason`；详情需等 P1 侧栏。
+2. 审批请求不携带参数，用户只能看到插件生成的单行 `displayReason`；范围内详情可在 P1 侧栏“审查顺序”页签查看。
 3. `write` 的删除检测是行级近似，不保证与最终落盘逐行一致；读不到旧文件/超限时跳过删除检测。
 4. 未声明范围时默认放行（只审计），这是刻意选择。
 5. 审批服务存在但无 answerer（headless/无 UI）时，`ask` 由 DSH 管道 fail-closed 成拒绝；`onApprovalUnavailable: allow` 只覆盖"无服务 / 策略 never"。
 6. 子 Agent 的写入会被拦，但 scope 取子会话自身，父会话范围不自动继承；P1 审查单元不含子会话（内置 `workspace/changes` 不记录）。
+7. P1 审查顺序只显示当前会话最近一次 `workspace/changes`；无导入图（P2）；分组是目录/入口启发式，不把敏感规则或越界状态混入排序；依赖内置 `/api/changes.summary` 与 `changes-review` 页签，DSH 升级需回归。
+8. P1 的 Client 视觉/交互（浅色/深色、窄栏、点击跳转）尚未人工验收；只完成了 Client Inspect 注册验证与 client.js 单测。
