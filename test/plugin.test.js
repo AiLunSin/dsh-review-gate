@@ -128,6 +128,52 @@ test('plugin: fs safety net rejects a protected path for an unknown writer', asy
   )
 })
 
+test('plugin: fs safety net delegates to the next listener', async () => {
+  const host = createFakeHost({ approval: approvalAsk })
+  await apply(host.ctx, { audit: { enabled: false } })
+  const listener = host.listenersFor('fs/write-intent')[0]
+  const target = { displayPath: path.resolve(host.cwd, 'src/auth/a.ts') }
+  const actor = { name: 'mcp_fs', agent: { session: { id: 's', header: { cwd: host.cwd } } } }
+  let secondCalled = false
+  const intent = await listener(target, actor, async () => {
+    secondCalled = true
+    return { kind: 'createIfAbsent' }
+  })
+  assert.equal(secondCalled, true)
+  assert.deepEqual(intent, { kind: 'createIfAbsent' })
+})
+
+test('plugin: fs safety net does not swallow a later policy error', async () => {
+  const host = createFakeHost({ approval: approvalAsk })
+  await apply(host.ctx, { audit: { enabled: false } })
+  const listener = host.listenersFor('fs/write-intent')[0]
+  const target = { displayPath: path.resolve(host.cwd, 'src/auth/a.ts') }
+  const actor = { name: 'mcp_fs', agent: { session: { id: 's', header: { cwd: host.cwd } } } }
+  let calls = 0
+  await assert.rejects(
+    listener(target, actor, () => {
+      calls += 1
+      throw new Error('later policy rejected')
+    }),
+    /later policy rejected/,
+  )
+  assert.equal(calls, 1)
+})
+
+test('plugin: fs safety net uses the resolved target key to catch symlink escapes', async () => {
+  const host = createFakeHost({ approval: approvalAsk })
+  await apply(host.ctx, { audit: { enabled: false } })
+  const target = {
+    displayPath: path.resolve(host.cwd, 'src/auth/link.txt'),
+    targetKey: path.resolve(host.cwd, '.git/config'),
+  }
+  const actor = { name: 'mcp_fs', agent: { session: { id: 's', header: { cwd: host.cwd } } } }
+  await assert.rejects(
+    host.runFsIntent('write', target, actor),
+    error => error?.code === 'REVIEW_GATE_PROTECTED',
+  )
+})
+
 test('plugin: synchronous guard denies protected paths for mapped tools', async () => {
   const host = createFakeHost({ approval: approvalAsk })
   await apply(host.ctx, { audit: { enabled: false } })

@@ -26,8 +26,9 @@
 
 ## 2. 运行时证据（真实 DSH headless）
 
-命令：`npm run e2e`（`e2e/run.mjs`）。临时 `DSH_HOME` + `headless` profile + 脚本化 LLM，真实走完一次 turn：
+命令：`npm run e2e`（`e2e/run.mjs`）。临时 `DSH_HOME` + `headless` profile + 脚本化 LLM + 测试专用插件（fake LLM / 未映射 fs 工具 / 命令触发器），真实走完一次 turn：
 
+0. 新 Agent 创建时，测试插件通过真实命令注册表执行 `/review-scope src/auth/**`（不依赖 UI）
 1. `write src/utils/helper.ts`（越界）→ 拒绝
 2. `write src/auth/login.ts`（范围内）→ 成功
 3. `read src/auth/login.ts` → 成功
@@ -43,10 +44,13 @@ e2e: PASS pre-execute deny/allow + fs safety net + audit + no out-of-scope file
 
 关键观察：
 
+- 会话日志出现真实 `command/run`（`name=review-scope`，`args=src/auth/**`）；3 条 pre-execute 审计的 `scopeSource` 都是 `command`，证明 session projection 从日志重建了范围，而不是退回配置默认值。
 - 第 1/4 个拒绝带 `REVIEW_GATE_APPROVAL_UNAVAILABLE`：profile 已将 `approval` 行配置为 `policy: never`，插件在 `tools/pre-execute` 里先判定策略、再按 `onApprovalUnavailable: deny` 拒绝，**没有**把 `ask` 交给 DSH 管道去撞 `never`。
 - 第 5 个拒绝的模型侧文本为 `Error: [review-gate] 越界写入：src/utils/mcp.ts（已声明范围：src/auth/**） (fs-intent=write)`；审计行带 `code=REVIEW_GATE_SCOPE_DENIED`。普通 `Error` 不是 `HarnessError`，因此工具结果没有结构化 `info.code`，但文本与审计都带标记。
 - 越界文件与 fs 安全网文件都未落盘；范围内文件已创建且被拒绝的 edit 未修改它。
 - 审计目录 `$DSH_HOME/review-gate/audit/audit-YYYY-MM-DD.jsonl` 有 3 条 pre-execute 决策 + 1 条 fs-intent 拒绝；不含 `hasPermission` 原文。
+
+审批链路另跑 `e2e/approval.mjs`（policy `ask` + fake answerer）：越界写入 → `ask` → `rejected`；敏感删除 → `ask` → `allowed-once`。会话日志出现 2 组 `approval/asked`/`decided`（outcome `rejected`、`allowed-once`）；被允许的 edit 真实落盘（auth 行被删除），审计有 2 条 `type:"approval"` 与 3 条 decision（ask/allow/ask）。
 
 局限：headless profile 默认 `fs-observation-policy` 为 `disabled: true`，所以真实 e2e 不覆盖“先读后写 + 版本守卫”的交互；这部分由单测和 Desktop 使用场景覆盖。`displayReason` 的视觉渲染未在真实浏览器中人工验收（源码层面已确认是标题单行）。
 
@@ -60,6 +64,7 @@ e2e: PASS pre-execute deny/allow + fs safety net + audit + no out-of-scope file
 4. **fs 安全网只覆盖遵循约定的工具**：只有工具主动 `waterfall('fs/write-intent', target, actor, ...)` 时才可见；绕过 `ctx.fs` 或 `fs/*-intent` 的写入（例如直接 `fs.writeFile`、bash）不覆盖。README 与 SECURITY 已写明。
 5. **`apply_patch` 默认未启用**：Desktop/headless 的 `tool-fs` 行是 `applyPatch: false`；适配器仍支持，其他 profile 打开后可生效。
 6. **审批无 answerer 的情形不可由钩子区分**：审批服务存在、策略 `ask`、但没有 UI answerer 时，插件返回 `ask`，由 DSH 管道 fail-closed 成拒绝。`onApprovalUnavailable: allow` 只能救“无服务 / `never`”两种可判定情形；README 写明。
+7. **路径判定必须走 `ctx.fs.resolve`**：只做 `path.resolve(cwd, arg)` 会漏掉 `~` 展开与符号链接 realpath（DSH 写入的是解析后的目标）。P0 在 pre-execute 里对每个 target 调 `ctx.fs.resolve`，用 `displayPath` + `targetKey` 共同判定；同步 guard 仍按词法路径，只作最后防线。
 
 ---
 
@@ -67,8 +72,8 @@ e2e: PASS pre-execute deny/allow + fs safety net + audit + no out-of-scope file
 
 | 项 | 结果 |
 |---|---|
-| 单元/集成测试 | `node --test "test/*.test.js"`：**99 passed / 0 failed**（glob、scope、rules、adapters、decide、audit、config、plugin 生命周期、approval 回执） |
-| 真实 DSH e2e | PASS（见 §2） |
+| 单元/集成测试 | `node --test "test/*.test.js"`：**106 passed / 0 failed**（glob、scope、rules、adapters、decide、audit、config、plugin 生命周期、approval 回执、fs realpath 安全网、fs intent 委托） |
+| 真实 DSH e2e | 两条均 PASS：`e2e/run.mjs`（never + fs 安全网）、`e2e/approval.mjs`（ask→拒绝 / ask→允许 + approval 审计） |
 | 决策性能基准 | 2,000 次范围内 write 决策，P95 < 50ms、均值 < 10ms（单测断言；本机实际远低于） |
 | 隐私 | 审计白名单丢弃 `content`/`old_string`；e2e 断言审计文本不含敏感源码 |
 
@@ -77,8 +82,8 @@ e2e: PASS pre-execute deny/allow + fs safety net + audit + no out-of-scope file
 ## 5. 未验证 / 已知限制（交付时保留）
 
 1. 真实浏览器里的审批标题渲染、浅色/深色主题、侧栏 UI：P0 无 Client，未验收。
-2. DSH 交互式 Desktop 会话中的真实人工审批（allow/reject）链路：用单测 + 真实 headless 的 `never` 路径覆盖；ask 的 UI 点击未人工验收。
+2. 真实 Web `ApprovalPanel` 的人工点击/渲染未验收；但真实 DSH 审批管道已用 fake answerer 覆盖 ask→`rejected` 与 ask→`allowed-once`（`e2e/approval.mjs`），包括 `approval/asked`/`decided` 与插件审计回执。
 3. `bash` / `pwsh` / MCP / 绕过 `fs/*-intent` 的写入不拦截。
-4. 子 Agent：全局 pre-execute 会覆盖其调用，但 scope 来自子会话自身；父会话范围不会自动继承（P0 未做继承）。
+4. 子 Agent：全局 pre-execute 会覆盖其调用；`fork` 复制父前缀（含 `command/run`）所以继承范围，`spawn` 子 Agent 是新会话、不自动继承父范围（P0 未做显式继承）。
 5. 大文件/远程 fs：`readText` 无 `maxBytes` 参数，依赖 `stat.size` 上限；后端不报 size 时可能先整读再丢弃。
 6. 审批不可用但服务存在且无 answerer 时，`allow` 降级不生效（见 §3.6）。

@@ -1,0 +1,13 @@
+{
+  "name": "dsh-fake-approval",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Offline approval answerer used by e2e/approval.mjs: rejects the first review-gate ask and allows the second. Test only; never published.",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js"
+  ]
+}

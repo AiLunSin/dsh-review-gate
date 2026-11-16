@@ -1,5 +1,7 @@
 # dsh-review-gate 需求分析报告
 
+> 实现状态：P0 已完成并在真实 DSH `0.2.2-rc.3` headless 冒烟通过；本文保留 v0.2 分析口径，最终决策见 [`docs/decisions.md`](decisions.md)，实现与验证见 [README](../README.md) 与 [`docs/spike-m0.md`](spike-m0.md)。
+
 | 项目 | 内容 |
 |---|---|
 | 文档版本 | v0.2（对 v0.1 草案的核验修订版；2026-11-17 按 D1–D4 决策定稿，见 `docs/decisions.md`） |

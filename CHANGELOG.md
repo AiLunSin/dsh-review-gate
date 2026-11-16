@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 — unreleased
+## 0.1.0 — 2026-11-17
 
 - Initial P0 implementation for DSH `0.2.2-rc.3`.
 - `/review-scope <glob...>` and `/review-scope clear`, persisted through a

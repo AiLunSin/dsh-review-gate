@@ -93,15 +93,6 @@ export function isAbsolutePath(value) {
 }
 
 /**
- * Escape a literal fragment for use inside a RegExp.
- * @param {string} value
- * @returns {string}
- */
-export function escapeRegExp(value) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-/**
  * Heuristic comment/blank detection used before matching sensitive rules.
  * Deliberately conservative: a line is skipped only when it is blank or starts
  * with a comment marker that is unambiguous in the common languages DSH edits.
@@ -118,25 +109,6 @@ export function isCommentOrBlank(line) {
   if (/^#[ \t!]/.test(trimmed) || trimmed === '#') return true
   if (/^--[ \t]/.test(trimmed)) return true
   return false
-}
-
-/**
- * Group items by a key while preserving first-seen order.
- * @template T, K
- * @param {T[]} items
- * @param {(item: T) => K} keyOf
- * @returns {Map<K, T[]>}
- */
-export function groupBy(items, keyOf) {
-  /** @type {Map<K, T[]>} */
-  const groups = new Map()
-  for (const item of items) {
-    const key = keyOf(item)
-    const group = groups.get(key)
-    if (group === undefined) groups.set(key, [item])
-    else group.push(item)
-  }
-  return groups
 }
 
 /**

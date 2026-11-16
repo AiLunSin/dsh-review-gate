@@ -14,7 +14,7 @@ import { compileProtected, relativePath } from './glob.js'
 import { translate } from './locale.js'
 import { evaluateRules, firstLineOf, headerIgnore } from './rules.js'
 import { readScopeState, scopeMatcher } from './scope.js'
-import { isPlainObject, normalizePath, splitLines } from './util.js'
+import { isAbsolutePath, isPlainObject, normalizePath, removedLines, splitLines } from './util.js'
 
 export const ERROR_NAME = 'ReviewGateError'
 export const ERROR_CODES = Object.freeze({
@@ -103,6 +103,25 @@ export function makeReadFile(ctx, config, execSignal) {
 }
 
 /**
+ * Every local path identity a decision must consider: the lexical argument path,
+ * the backend display path (`~` expanded), and the backend realpath identity.
+ * @param {any} target
+ * @returns {string[]}
+ */
+function pathCandidates(target) {
+  const values = [target.absolutePath, target.lexicalPath, target.targetKey]
+  const seen = new Set()
+  const out = []
+  for (const value of values) {
+    if (typeof value !== 'string' || value === '' || !isAbsolutePath(value)) continue
+    if (seen.has(value)) continue
+    seen.add(value)
+    out.push(value)
+  }
+  return out
+}
+
+/**
  * Fit rule-hit line numbers back onto the file when the adapter could not
  * provide them (edit/str_replace/apply_patch update hunks).
  * @param {any} target
@@ -169,7 +188,9 @@ export async function evaluateTarget(target, deps) {
   if (content === undefined && deps.readFile !== undefined) {
     content = await deps.readFile(target.absolutePath)
   }
-  if (content === undefined) return { ...result, content }
+  if (content === undefined) {
+    return { ...result, content, warnings: [...result.warnings, 'read_unavailable'] }
+  }
   const remapped = remapDeletions(target, content)
   result = evaluateRules({
     ruleset: deps.ruleset,
@@ -252,11 +273,43 @@ export async function decide(deps) {
     return { verdict: { kind: 'allow' }, ...finish({ decision: 'allow', reason: 'no-target' }) }
   }
 
+  // Resolve the target through the same filesystem seam the writing tool uses.
+  // This expands `~`, follows symlinked ancestors, and gives us the backend's
+  // realpath identity, so scope/protected checks cannot be bypassed by a
+  // lexical path that differs from where the write lands.
+  const fsService = ctx.get?.('fs')
   for (const target of targets) {
+    target.lexicalPath = target.absolutePath
+    if (fsService !== undefined && typeof fsService.resolve === 'function') {
+      try {
+        const resolved = await fsService.resolve(target.rawPath, { cwd, signal: exec?.signal })
+        if (typeof resolved?.displayPath === 'string' && resolved.displayPath !== '') {
+          target.absolutePath = resolved.displayPath
+        }
+        if (typeof resolved?.targetKey === 'string') target.targetKey = resolved.targetKey
+      } catch {
+        // Keep the lexical path; a missing path is reported by the tool itself.
+      }
+    }
+    if (target.absolutePath !== target.lexicalPath && readFile !== undefined) {
+      if (target.source === 'write' && typeof target.afterText === 'string') {
+        const content = await readFile(target.absolutePath)
+        target.content = content
+        target.deletions = content === undefined
+          ? []
+          : removedLines(content, target.afterText)
+      } else if (target.source === 'patch' && target.patchKind === 'delete') {
+        const content = await readFile(target.absolutePath)
+        target.content = content
+        target.deletions = content === undefined
+          ? []
+          : splitLines(content).map((text, index) => ({ text, line: index + 1 }))
+      }
+    }
     target.relativePath = relativePath(target.absolutePath, cwd)
   }
 
-  const protectedTarget = targets.find(target => deps.protectedMatcher.matches(target.absolutePath, cwd))
+  const protectedTarget = targets.find(target => pathCandidates(target).some(candidate => deps.protectedMatcher.matches(candidate, cwd)))
   if (protectedTarget !== undefined) {
     const reason = `[review-gate] ${text(locale, 'deny.protected', { path: protectedTarget.relativePath })} (rule=RG-PROTECTED)`
     return {
@@ -277,7 +330,7 @@ export async function decide(deps) {
 
   /** @type {any[]} */
   const outOfScope = config.scope.enforce && scopeState.globs.length > 0
-    ? targets.filter(target => !matcher.inScope(target.absolutePath, cwd))
+    ? targets.filter(target => pathCandidates(target).some(candidate => !matcher.inScope(candidate, cwd)))
     : []
 
   /** @type {{ target: any, hits: any[], deleted: number, warnings: string[], skipped: boolean }[]} */

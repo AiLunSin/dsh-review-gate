@@ -165,5 +165,8 @@ export class AuditLog {
     this.closed = true
     await this.chain
     await this.flushOnce()
+    if (this.dropped > 0) {
+      this.logger?.warn?.(`[review-gate] audit queue dropped ${this.dropped} record(s)`)
+    }
   }
 }

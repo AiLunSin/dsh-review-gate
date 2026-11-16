@@ -162,15 +162,21 @@ ctx.effect(() => ctx.on('tools/pre-execute', async (exec, next) => {
 ```ts
 ctx.effect(() => ctx.on('fs/write-intent', (target, actor, next) => {
   if (isMappedTool(actor)) return next()        // 主钩子已判过，避免二次决策
-  if (isProtected(target.displayPath)) {
-    throw new FsError('REVIEW_GATE_PROTECTED', `${target.displayPath} 属于受保护路径`)
-  }
-  if (outOfScope(target.displayPath)) {
-    throw new FsError('REVIEW_GATE_OUT_OF_SCOPE', `${target.displayPath} 超出已声明范围`)
+  if (!isProtectedAndInScope(target.displayPath, target.targetKey)) {
+    const error = new Error(`[review-gate] ...`)
+    error.name = 'ReviewGateError'
+    error.code = 'REVIEW_GATE_PROTECTED'
+    throw error
   }
   return next()
-}))
+}, { prepend: true }))
 ```
+
+要点：
+
+- 用 `{ prepend: true }` 抢在内置 `fs-observation-policy` 前面，否则单槽 waterfall 被它占满，后注册的监听器永远不执行。
+- 同时检查 `displayPath` 与后端 `targetKey`（fs-local 是 realpath），避免符号链接逃逸。
+- 抛出普通 `Error`（不 import `HarnessError`，保持零依赖）；DSH 的工具结果因此没有结构化 `info.code`，但文本带 `[review-gate]`，稳定 code 在审计行里。
 
 ### 4.4 同步硬边界（guard）
 
@@ -596,9 +602,9 @@ window.__ModuleLoader__.load({
 
 | 场景 | 行为 |
 |---|---|
-| pre-execute 计算超 `preExecuteMs` | 返回 `next()`，审计 `degraded=true` |
-| 读旧文件超时/超大 | 跳过删除检测，审计 `deletionCheck=skipped` |
-| 规则正则灾难性回溯 | 规则编译期检查；运行时逐行匹配，单规则超 5ms 终止该规则并告警 |
+| pre-execute 计算超 `preExecuteMs` | 按 `onInternalError` 降级：默认 `next()` + `degraded=true`；配置 `deny` 时拒绝 |
+| 读旧文件超时/超大 | 跳过删除检测（规则不产生命中记录；审计仍记录决策） |
+| 规则正则灾难性回溯 | 规则编译期检查；运行时逐行匹配，单规则超 `limits.ruleMs` 终止该规则并告警 |
 | 投影 `apply` 抛错 | 会话投影框架隔离；范围回退到配置默认值 |
 | payload 结构不匹配 | 适配层校验 `callId/name/arguments`；不匹配 → 放行 + 告警（N-04） |
 
@@ -614,7 +620,7 @@ window.__ModuleLoader__.load({
 | 审计入队 | 0.1ms |
 | **合计** | **≈17ms** |
 
-`edit` 无读文件步骤，P95 目标 < 3ms；非文件工具 < 0.5ms（一次 Map 查找）。
+`edit` 无规则命中时零读文件；命中后为行号/header 复核读一次（≤256KB），P95 目标 < 3ms（无命中）/ < 20ms（命中）。非文件工具 < 0.5ms（一次 Set 查找）。
 
 ### 13.3 安全
 
@@ -633,9 +639,9 @@ window.__ModuleLoader__.load({
 
 | 层级 | 内容 | 工具 |
 |---|---|---|
-| 单元 | glob 匹配表、行差集、规则匹配、决策矩阵、文案格式、路径归一化、配置校验 | `node:test`（`test/*.test.js`，99 项） |
+| 单元 | glob 匹配表、行差集、规则匹配、决策矩阵、文案格式、路径归一化、配置校验 | `node:test`（`test/*.test.js`，106 项） |
 | 集成 | 假 `ctx` 驱动 apply / pre-execute / fs 安全网 / guard / 卸载清理；审批桩覆盖 available/never/absent | `node:test` |
-| 端到端 | 真实 DSH headless + 脚本化 LLM + 未映射 fs 工具：真实 pre-execute deny/allow、fs 安全网拒绝、文件落盘断言、审计断言 | `e2e/run.mjs`（M1 出口） |
+| 端到端 | 真实 DSH headless：never + fs 安全网（`e2e/run.mjs`）；ask→reject / ask→allow + approval 审计（`e2e/approval.mjs`） | 真实 profile |
 | 性能 | 2,000 次范围内 write 决策，断言均值 < 10ms、P95 < 50ms | `node:test` |
 | 回归 | 每次 DSH 升级跑 `npm test` + `npm run e2e` | 本机 / 未来 CI 手动 |
 

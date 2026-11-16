@@ -27,11 +27,12 @@ import { registerScopeProjection } from './scope.js'
 export const name = 'dsh-review-gate'
 
 /**
- * `tools` is the only hard dependency: the gate lives on its event/seam.
- * Everything else (projections, commands, fs, approval) is optional and
- * degrades to a narrower capability instead of blocking activation.
+ * `tools` performs the gate; `sessionProjections` is required for the durable
+ * `/review-scope` state. `commands`, `fs`, and `approval` are optional and are
+ * consumed through `ctx.inject`/`ctx.get`, so a profile without them still gets
+ * the configured default scope and rules.
  */
-export const inject = ['tools']
+export const inject = ['tools', 'sessionProjections']
 
 /**
  * @param {any} ctx Cordis Host context
@@ -60,11 +61,22 @@ export async function apply(ctx, rawConfig) {
   })
 
   const scopeHandle = await registerScopeProjection(ctx, config)
-
-  const commands = ctx.get?.('commands')
-  if (scopeHandle !== undefined && commands !== undefined && typeof commands.register === 'function') {
-    const definition = createReviewScopeCommand({ config, locale, scopeHandle })
-    ctx.effect(() => commands.register(definition), 'review-gate: /review-scope')
+  if (scopeHandle === undefined) {
+    audit.record({
+      v: 1,
+      ts: new Date().toISOString(),
+      type: 'degraded',
+      decision: 'allow',
+      reason: 'scope-projection-unavailable',
+    })
+    ctx.logger?.warn?.('[review-gate] scope projection unavailable; falling back to configured scope/rules only')
+  } else {
+    ctx.inject(['commands'], (scope) => {
+      const commands = scope.get('commands')
+      if (commands === undefined || typeof commands.register !== 'function') return
+      const definition = createReviewScopeCommand({ config, locale, scopeHandle })
+      scope.effect(() => commands.register(definition), 'review-gate: /review-scope')
+    })
   }
 
   const pendingAsks = new Map()

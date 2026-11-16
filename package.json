@@ -32,6 +32,7 @@
   },
   "exports": {
     ".": "./src/index.js",
+    "./package.json": "./package.json",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"
   },
@@ -51,6 +52,7 @@
     "lint": "node scripts/check-syntax.mjs",
     "check": "npm run lint && npm test",
     "e2e": "node e2e/run.mjs",
+    "e2e:approval": "node e2e/approval.mjs",
     "build:release": "node scripts/build-release.mjs --name @ailunsin/dsh-review-gate",
     "smoke:install": "node scripts/smoke-install.mjs",
     "validate:index": "node scripts/validate-market-index.mjs"

@@ -2,11 +2,10 @@
 /**
  * Build a publishable copy of the bundle under `dist/`.
  *
- * The working repository keeps the short name `dsh-review-gate`; the npm
- * package is `@ailunsin/dsh-review-gate` because the unscoped name is taken by
- * an unrelated project. The script copies the published file set, rewrites the
- * bundle row and (when present) the client module id, and verifies the result
- * before you pack/publish.
+ * The working repository and dist package are both `@ailunsin/dsh-review-gate`
+ * (the unscoped name is taken by an unrelated project). The script copies the
+ * published file set, rewrites the bundle row and (when present) the client
+ * module id, and verifies the result before you pack/publish.
  *
  * Usage:
  *   node scripts/build-release.mjs --name @ailunsin/dsh-review-gate [--version x.y.z]

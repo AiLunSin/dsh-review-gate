@@ -4,10 +4,8 @@
  * @module dsh-review-gate/interceptors
  */
 
-import path from 'node:path'
 import { MAPPED_TOOLS } from './adapters.js'
 import {
-  approvalAvailability,
   decide,
   ERROR_CODES,
   ERROR_NAME,
@@ -157,67 +155,80 @@ export function installFsSafetyNet(deps) {
     if (actorName !== undefined && MAPPED_TOOLS.includes(actorName)) return undefined
     if (typeof target?.displayPath !== 'string') return undefined
     const displayPath = target.displayPath
-    const isLocal = isAbsolutePath(displayPath)
     const cwd = actor?.agent !== undefined ? sessionCwd(ctx, actor) : process.cwd()
-    const absolute = isLocal ? displayPath : path.resolve(cwd, displayPath)
-    const relative = isLocal ? relativePath(absolute, cwd) : null
-    if (protectedMatcher.matches(absolute, cwd)) {
-      return {
-        code: ERROR_CODES.protected,
-        message: `[review-gate] ${translate(locale, 'deny.protected', { path: relative ?? displayPath })} (rule=RG-PROTECTED)`,
+    // Prefer the backend's stable identity when it is also a local path: for
+    // fs-local this is the realpath, so a symlink inside the workspace cannot
+    // point an unmapped writer at a protected/out-of-scope target.
+    const candidates = [displayPath]
+    const targetKey = typeof target?.targetKey === 'string' ? target.targetKey : ''
+    if (targetKey !== '' && targetKey !== displayPath && isAbsolutePath(targetKey)) candidates.push(targetKey)
+    const relativeDisplay = isAbsolutePath(displayPath) ? relativePath(displayPath, cwd) : null
+    for (const candidate of candidates) {
+      if (!isAbsolutePath(candidate)) continue
+      if (protectedMatcher.matches(candidate, cwd)) {
+        return {
+          code: ERROR_CODES.protected,
+          message: `[review-gate] ${translate(locale, 'deny.protected', { path: relativeDisplay ?? candidate })} (rule=RG-PROTECTED)`,
+        }
       }
     }
-    if (relative === null) return undefined
     if (!config.scope.enforce) return undefined
     const state = readScopeState(scopeHandle, actor?.agent?.session, config)
     if (state.globs.length === 0) return undefined
     const matcher = scopeMatcher(state, config)
-    if (matcher.inScope(absolute, cwd)) return undefined
+    const localCandidates = candidates.filter(candidate => isAbsolutePath(candidate))
+    if (localCandidates.length === 0) return undefined
+    const outside = localCandidates.find(candidate => !matcher.inScope(candidate, cwd))
+    if (outside === undefined) return undefined
     return {
       code: ERROR_CODES.scope,
       message: `[review-gate] ${translate(locale, 'deny.scope', {
-        path: relative,
+        path: relativeDisplay ?? outside,
         scope: state.globs.join('  '),
       })} (fs-intent=${verb})`,
     }
   }
   const listener = (verb) => async (target, actor, next) => {
     if (actor?.signal?.aborted) return next()
+    const actorName = typeof actor?.name === 'string' ? actor.name : undefined
+    // Mapped tools already went through tools/pre-execute; recording every
+    // internal fs intent as an allow row would drown the audit trail.
+    if (actorName !== undefined && MAPPED_TOOLS.includes(actorName)) return next()
+    let denial
     try {
-      const denial = check(verb, target, actor)
-      if (denial === undefined) {
-        audit.record({
-          v: 1,
-          ts: new Date().toISOString(),
-          type: 'fs-intent',
-          decision: 'allow',
-          tool: typeof actor?.name === 'string' ? actor.name : undefined,
-          sessionId: actor?.agent?.session === undefined ? undefined : sessionIdOf({ agent: actor.agent }),
-          path: typeof target?.displayPath === 'string' ? target.displayPath : undefined,
-          reason: 'safety-net',
-        })
-        return next()
-      }
+      denial = check(verb, target, actor)
+    } catch (error) {
+      ctx.logger?.warn?.('[review-gate] fs safety net check failed; allowing the mutation:', error)
+      return next()
+    }
+    if (denial === undefined) {
       audit.record({
         v: 1,
         ts: new Date().toISOString(),
         type: 'fs-intent',
-        decision: 'deny',
-        code: denial.code,
+        decision: 'allow',
         tool: typeof actor?.name === 'string' ? actor.name : undefined,
         sessionId: actor?.agent?.session === undefined ? undefined : sessionIdOf({ agent: actor.agent }),
         path: typeof target?.displayPath === 'string' ? target.displayPath : undefined,
-        reason: `fs-${verb}`,
+        reason: 'safety-net',
       })
-      const error = new Error(denial.message)
-      error.name = ERROR_NAME
-      error.code = denial.code
-      throw error
-    } catch (error) {
-      if (error instanceof Error && error.name === ERROR_NAME) throw error
-      ctx.logger?.warn?.('[review-gate] fs safety net failed; allowing the mutation:', error)
       return next()
     }
+    audit.record({
+      v: 1,
+      ts: new Date().toISOString(),
+      type: 'fs-intent',
+      decision: 'deny',
+      code: denial.code,
+      tool: typeof actor?.name === 'string' ? actor.name : undefined,
+      sessionId: actor?.agent?.session === undefined ? undefined : sessionIdOf({ agent: actor.agent }),
+      path: typeof target?.displayPath === 'string' ? target.displayPath : undefined,
+      reason: `fs-${verb}`,
+    })
+    const error = new Error(denial.message)
+    error.name = ERROR_NAME
+    error.code = denial.code
+    throw error
   }
   ctx.effect(() => ctx.on('fs/write-intent', listener('write'), { prepend: true }), 'review-gate: fs/write-intent')
   ctx.effect(() => ctx.on('fs/edit-intent', listener('edit'), { prepend: true }), 'review-gate: fs/edit-intent')
@@ -277,15 +288,6 @@ export function installApprovalObserver(deps) {
       outcome: event.data?.outcome,
     })
   }), 'review-gate: approval audit')
-}
-
-/**
- * Best-effort availability probe used in tests and documentation.
- * @param {any} ctx
- * @param {any} exec
- */
-export function availabilityOf(ctx, exec) {
-  return approvalAvailability(ctx, exec?.agent)
 }
 
 /** @param {any} exec */

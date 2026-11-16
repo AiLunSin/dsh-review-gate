@@ -107,6 +107,8 @@ function writeProfilePatch() {
     '      name: dsh-fake-llm-review-gate',
     '    - id: fake-fs-tool',
     '      name: dsh-fake-fs-tool',
+    '    - id: fake-scope-command',
+    '      name: dsh-fake-scope-command',
     '- id: agent-default-model',
     "  name: '@deepseek-ai/dsh-agent-default-model'",
     '  config:',
@@ -119,9 +121,6 @@ function writeProfilePatch() {
     '- id: review-gate',
     "  name: '@ailunsin/dsh-review-gate'",
     '  config:',
-    '    scope:',
-    '      default:',
-    "        - 'src/auth/**'",
     '    onApprovalUnavailable: deny',
     '    audit:',
     '      enabled: true',
@@ -137,7 +136,7 @@ function eventsOf(events, type) {
 try {
   console.log('e2e: creating a throwaway headless profile')
   mustRun(['--profile', 'e2e', '--from-default-profile', 'headless', '--dump-config'])
-  mustRun(['plugin', '--profile', 'e2e', 'add', repoRoot, path.join(repoRoot, 'e2e', 'fake-llm'), path.join(repoRoot, 'e2e', 'fake-tool')])
+  mustRun(['plugin', '--profile', 'e2e', 'add', repoRoot, path.join(repoRoot, 'e2e', 'fake-llm'), path.join(repoRoot, 'e2e', 'fake-tool'), path.join(repoRoot, 'e2e', 'fake-command')])
   writeProfilePatch()
 
   console.log('e2e: running the scripted turn')
@@ -177,8 +176,12 @@ try {
   const auditFiles = readdirSync(auditDir).sort()
   assert.equal(auditFiles.length, 1)
   const audit = readFileSync(path.join(auditDir, auditFiles[0]), 'utf8').trim().split('\n').map(line => JSON.parse(line))
+  const commandRuns = events.filter(event => event.type === 'command/run' && event.data?.name === 'review-scope')
+  assert.ok(commandRuns.length >= 1, '/review-scope must be recorded as a durable command/run event')
+  assert.match(commandRuns[0].data.args, /src\/auth\/\*\*/)
   const decisions = audit.filter(record => record.type === 'decision')
   assert.equal(decisions.length, 3, `expected three audited decisions, got ${decisions.length}`)
+  assert.ok(decisions.every(record => record.scopeSource === 'command'), 'the scope must come from the command projection, not config')
   assert.equal(decisions.filter(record => record.decision === 'deny').length, 2)
   assert.equal(decisions.filter(record => record.decision === 'allow').length, 1)
   assert.ok(decisions.every(record => record.approval === 'never' || record.decision === 'allow'), 'denials must record the never policy')

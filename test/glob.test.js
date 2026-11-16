@@ -94,6 +94,25 @@ test('glob: empty scope matches everything (caller treats it as disabled)', () =
   assert.equal(compileScope([]).inScope(abs('anything.go'), cwd), true)
 })
 
+test('glob: ** is workspace-bound and does not match an outside path', () => {
+  const scope = compileScope(['**'])
+  assert.equal(scope.inScope(abs('src/a.ts'), cwd), true)
+  assert.equal(scope.inScope(path.resolve(cwd, '..', 'outside.ts'), cwd), false)
+})
+
+test('glob: exclusion-only scope is workspace-bound', () => {
+  const scope = compileScope(['!**/*.test.ts'])
+  assert.equal(scope.inScope(abs('src/a.ts'), cwd), true)
+  assert.equal(scope.inScope(path.resolve(cwd, '..', 'a.ts'), cwd), false)
+})
+
+test('glob: an absolute pattern can still match outside the workspace', () => {
+  const outside = path.resolve(cwd, '..', 'out', 'a.ts')
+  const scope = compileScope([`${path.dirname(outside).replace(/\\/g, '/')}/**`])
+  assert.equal(scope.inScope(outside, cwd), true)
+  assert.equal(scope.inScope(abs('src/a.ts'), cwd), false)
+})
+
 test('glob: path outside cwd does not match a relative pattern', () => {
   const scope = compileScope(['src/**'])
   assert.equal(scope.inScope(path.resolve(cwd, '..', 'src', 'a.ts'), cwd), false)

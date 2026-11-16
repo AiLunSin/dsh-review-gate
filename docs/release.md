@@ -25,12 +25,13 @@ cd C:\Users\11403\Desktop\one_too
 node scripts/check-syntax.mjs
 node --test "test/*.test.js"
 node e2e/run.mjs                 # 需要 DSH_INSTALL_DIR / DSH_NODE_EXECUTABLE
+node e2e/approval.mjs            # ask/reject + ask/allow 真实审批链路
 node scripts/build-release.mjs --name @ailunsin/dsh-review-gate
 node scripts/smoke-install.mjs   # manifest + npm pack + 临时 profile 安装
 npm pack --dry-run --json        # 在 dist 目录内，确认文件清单
 ```
 
-产物目录：`dist/ailunsin--dsh-review-gate/`。不要直接发布仓库根目录：根包名是短名，`dist` 里才是 scoped 发布名与重写后的 bundle patch。
+产物目录：`dist/ailunsin--dsh-review-gate/`。不要在仓库根直接 `npm publish`：根 `package.json` 已经是 scoped 名称，但发布文件清单、bundle patch 重写与 `npm pack` 结果应以构建产物为准。
 
 生成 tarball：
 
@@ -39,6 +40,11 @@ cd dist\ailunsin--dsh-review-gate
 npm pack
 # -> ailunsin-dsh-review-gate-0.1.0.tgz
 ```
+
+本机已生成并验证：
+
+- `dist/ailunsin--dsh-review-gate/ailunsin-dsh-review-gate-0.1.0.tgz`（约 58 KB，26 files）
+- 用该 tarball 向临时 headless profile `plugin add` 成功，`--dump-config` 含 `@ailunsin/dsh-review-gate` 与 `id: review-gate`。
 
 ## 2. npm 发布（需账号持有人）
 

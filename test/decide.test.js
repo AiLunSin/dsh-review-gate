@@ -20,7 +20,10 @@ function makeCtx({ approval, files = {} } = {}) {
       if (service === 'approval') return approval
       if (service === 'fs') {
         return {
-          resolve: async value => ({ targetKey: value, displayPath: value }),
+          resolve: async (value, opts) => {
+            const absolute = path.resolve(opts?.cwd ?? cwd, value)
+            return { targetKey: absolute, displayPath: absolute }
+          },
           stat: async target => fileMap.has(target.targetKey)
             ? { type: 'file', size: fileMap.get(target.targetKey).length }
             : undefined,
@@ -244,6 +247,60 @@ test('decide: remapDeletions puts edit hits on file line numbers', async () => {
     cwd,
   })
   assert.equal(result.hits[0].lines[0], 5)
+})
+
+test('decide: resolves ~ through ctx.fs before scope and protected checks', async () => {
+  const home = path.resolve(cwd, '..', 'home')
+  const expanded = path.join(home, '.ssh', 'config')
+  const ctx = {
+    get(service) {
+      if (service === 'workingDirectory') return { get: () => cwd }
+      if (service === 'approval') return { overrideOf: () => 'ask', config: { policy: 'ask' } }
+      if (service === 'fs') {
+        return {
+          resolve: async rawPath => ({
+            displayPath: rawPath.startsWith('~') ? path.join(home, rawPath.slice(2)) : path.resolve(cwd, rawPath),
+            targetKey: rawPath.startsWith('~') ? path.join(home, rawPath.slice(2)) : path.resolve(cwd, rawPath),
+          }),
+          stat: async () => undefined,
+          readText: async () => undefined,
+        }
+      }
+      return undefined
+    },
+    logger: { warn() {} },
+  }
+  const exec = makeExec({ tool: 'write', args: { file_path: '~/.ssh/config', content: 'x' } })
+  const baseConfig = resolveConfig({ scope: { default: ['src/**'] } })
+  const state = { globs: ['src/**'], source: 'command' }
+  const ask = await decide({
+    ctx,
+    config: baseConfig,
+    locale: 'en',
+    scopeHandle: { stateOf: () => state },
+    ruleset: resolveRuleset(baseConfig),
+    protectedMatcher: compileProtected(baseConfig.protectedPaths, { caseSensitive: false }),
+    exec,
+  })
+  assert.equal(ask.verdict.kind, 'ask')
+  assert.match(ask.verdict.displayReason.en, /\.ssh\/config/)
+
+  const protectedConfig = resolveConfig({
+    scope: { default: ['src/**'] },
+    protectedPaths: [`${home.replace(/\\/g, '/')}/.ssh/**`],
+  })
+  const denied = await decide({
+    ctx,
+    config: protectedConfig,
+    locale: 'en',
+    scopeHandle: { stateOf: () => state },
+    ruleset: resolveRuleset(protectedConfig),
+    protectedMatcher: compileProtected(protectedConfig.protectedPaths, { caseSensitive: false }),
+    exec,
+  })
+  assert.equal(denied.verdict.kind, 'deny')
+  assert.equal(denied.verdict.info.code, 'REVIEW_GATE_PROTECTED')
+  assert.ok(expanded.length > 0)
 })
 
 test('decide: guard denies protected paths synchronously', () => {

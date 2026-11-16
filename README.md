@@ -30,12 +30,15 @@
 
 ## 安装
 
-当前版本是本地/源码分发；npm 与 GitHub 产物随发布准备（见 [发布](#发布)）。
+当前版本是本地/源码分发；npm 与 GitHub 产物随发布准备（见 [发布](#发布) 与 [`docs/release.md`](docs/release.md)）。
 
 ```text
-# 插件管理器 → Add plugin → 填本仓库绝对路径
-# 或（发布后）
-pnpm add @ailunsin/dsh-review-gate
+# 开发安装：插件管理器 → Add plugin → 填本仓库绝对路径
+# 或（DSH CLI 在 PATH 时）：
+dsh plugin add C:\Users\11403\Desktop\one_too
+
+# npm 发布后：
+dsh plugin add @ailunsin/dsh-review-gate@0.1.0
 ```
 
 安装后在新会话里检查 **Plugins** 中的 **Review gate** 行；改配置后按 DSH 的提示重启或让 HMR 生效。
@@ -108,6 +111,7 @@ pnpm add @ailunsin/dsh-review-gate
 | 越界（`scope.strict=false`） | `ask` | `onApprovalUnavailable`（默认 `deny`） |
 | 越界（`scope.strict=true`） | `deny` | `deny` |
 | 命中 `severity: ask` 规则 | `ask` | `onApprovalUnavailable` |
+| 插件内部异常 / 超时 | 按 `onInternalError`（默认 `allow` + 审计 `degraded`） | 同左 |
 | 范围内、无命中 | `allow` | `allow` |
 
 优先级：`deny(protected)` > `deny(block rule)` > `deny(strict scope)` > `ask(scope/rule)` > `allow`。
@@ -128,17 +132,25 @@ pnpm add @ailunsin/dsh-review-gate
 
 1. **不拦 shell。** `bash` / `pwsh` / MCP 工具直接写文件不受本插件约束；`fs/*-intent` 安全网只覆盖**主动经过该事件**的文件工具。需要硬边界时配合 DSH 沙箱模式。
 2. **审批不携带参数。** 路径、范围、规则都写在插件生成的 `displayReason` 标题里（单行）；审批请求本身只带 toolName/reason/callId。
-3. **`write` 的删除检测是行级近似**，不保证与最终落盘逐行一致；超过 `limits.readFileBytes` 或读不到旧文件时跳过删除检测并审计 `deletionCheck=skipped`。
+3. **`write` 的删除检测是行级近似**，不保证与最终落盘逐行一致；超过 `limits.readFileBytes` 或读不到旧文件时跳过删除检测（规则不产生命中记录，审计仍记录决策）。
 4. **未声明范围 = 不拦截**（只审计）。`/review-scope clear` 清除后同样只审计。
 5. **审批服务存在但无 answerer 时**（headless / 无 UI），`ask` 由 DSH 管道 fail-closed 成拒绝；`onApprovalUnavailable: allow` 只能覆盖"无审批服务 / 策略 never"两种可判定情形。
-6. **子 Agent**：全局 pre-execute 会拦子 Agent 的写入，但 scope 取自子会话自身；父会话范围不会自动继承。
-7. P1 的审查单元/顺序导航依赖内置 `changes-review` 与 `/api/changes.*`，尚未实现与验证。
+6. **子 Agent / fork**：`fork` 会复制父会话前缀（含 `command/run`），因此范围随 fork 继承；`spawn` 子 Agent 是新会话，scope 取自子会话自身，不自动继承父范围。全局 pre-execute 会拦子 Agent 的写入。
+7. **符号链接 / `~`**：主门通过 `ctx.fs.resolve` 使用扩展后的绝对路径与后端 realpath 判定；同步 `tools.guard` 仍只能按词法路径，作为最后防线。需要符号链接级硬边界时配合 DSH 沙箱。
+8. P1 的审查单元/顺序导航依赖内置 `changes-review` 与 `/api/changes.*`，尚未实现与验证。
+
+## 兼容性
+
+- DSH `0.2.2-rc.3`（`engines.dsh` 精确锁定；DSH 发版后同步验证升级）。
+- 要求 profile 组成 `@deepseek-ai/dsh-session-projection`（shipped `dsh-base` 已包含）；没有该服务时插件不会激活，而不是静默降级。
+- `commands` / `fs` / `approval` 是可选服务：缺失时 `/review-scope`、fs 安全网或审批降级分别不可用，但配置默认范围与规则仍然工作。
 
 ## 开发
 
 ```text
-node --test "test/*.test.js"   # 99 tests
-node e2e/run.mjs               # 真实 DSH headless e2e；需 DSH_INSTALL_DIR / DSH_NODE_EXECUTABLE
+node --test "test/*.test.js"   # 106 tests
+node e2e/run.mjs               # 真实 DSH headless：never 策略 + fs 安全网
+node e2e/approval.mjs          # 真实 DSH headless：ask → 拒绝 / ask → 允许 + approval 审计
 node scripts/check-syntax.mjs
 node scripts/build-release.mjs --name @ailunsin/dsh-review-gate
 ```

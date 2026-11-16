@@ -1,0 +1,13 @@
+{
+  "name": "dsh-fake-scope-command",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Offline test fixture that runs /review-scope against each new agent. Test only; never published.",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js"
+  ]
+}

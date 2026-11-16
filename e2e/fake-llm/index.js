@@ -47,6 +47,7 @@ function toolCall(index, name, args) {
 
 /** @param {string} provider @param {string} model */
 function createAdapter(provider, model) {
+  const approvalMode = process.env.RG_FAKE_MODE === 'approval'
   let agentCalls = 0
   return {
     providerInfo() {
@@ -84,6 +85,35 @@ function createAdapter(provider, model) {
         return
       }
       agentCalls += 1
+      if (approvalMode) {
+        if (agentCalls === 1) {
+          yield* toolCall(1, 'write', {
+            file_path: OUT_OF_SCOPE,
+            content: '// rejected by the fake approval answerer\n',
+          })
+        } else if (agentCalls === 2) {
+          yield* toolCall(2, 'write', { file_path: IN_SCOPE, content: AUTH_FILE })
+        } else if (agentCalls === 3) {
+          yield* toolCall(3, 'read', { file_path: IN_SCOPE })
+        } else if (agentCalls === 4) {
+          yield* toolCall(4, 'edit', {
+            file_path: IN_SCOPE,
+            old_string: AUTH_LINE,
+            new_string: '',
+          })
+        } else {
+          const text = 'Approval e2e finished after four tool calls.'
+          yield { type: 'block-start', index: 0, blockType: 'text' }
+          yield { type: 'text-delta', index: 0, text }
+          yield { type: 'block-end', index: 0, block: { type: 'text', text } }
+          yield usage(agentCalls)
+          yield { type: 'finish', reason: { kind: 'stop' } }
+          return
+        }
+        yield usage(agentCalls)
+        yield { type: 'finish', reason: { kind: 'tool-calls' } }
+        return
+      }
       if (agentCalls === 1) {
         yield* toolCall(1, 'write', {
           file_path: OUT_OF_SCOPE,

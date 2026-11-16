@@ -138,6 +138,7 @@ export async function collectTargets(options) {
         absolutePath,
         deletions: content === undefined ? [] : writeDeletions(content, args),
         ...content === undefined ? {} : { content },
+        afterText: typeof args.content === 'string' ? args.content : '',
         mayCreate: true,
         source: 'write',
       })

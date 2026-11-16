@@ -55,7 +55,10 @@ export function createFakeHost(options = {}) {
       }
       if (service === 'fs') {
         return {
-          resolve: async value => ({ targetKey: value, displayPath: value }),
+          resolve: async (value, opts) => {
+            const absolute = path.resolve(opts?.cwd ?? cwd, value)
+            return { targetKey: absolute, displayPath: absolute }
+          },
           stat: async target => fileMap.has(target.targetKey)
             ? { type: 'file', size: fileMap.get(target.targetKey).length }
             : undefined,
@@ -73,6 +76,11 @@ export function createFakeHost(options = {}) {
         const index = entries.indexOf(listener)
         if (index >= 0) entries.splice(index, 1)
       }
+    },
+    inject(dependencies, callback) {
+      if (!dependencies.every(name => ctx.get(name) !== undefined)) return () => {}
+      const dispose = callback(ctx)
+      return typeof dispose === 'function' ? dispose : () => {}
     },
     effect(factory) {
       const dispose = factory()

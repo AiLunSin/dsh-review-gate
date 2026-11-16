@@ -45,6 +45,14 @@ for (const file of [
   if (!existsSync(path.join(distDir, file))) fail(`missing published file: ${file}`)
 }
 
+// A stale dist shipped pre-fix code once; compare the copied runtime sources with
+// the checkout before declaring the artifact publishable.
+for (const file of ['src/index.js', 'src/interceptors.js', 'src/decide.js', 'src/glob.js', 'src/adapters.js', 'src/rules.js']) {
+  const source = readFileSync(path.join(root, file))
+  const built = readFileSync(path.join(distDir, file))
+  if (!source.equals(built)) fail(`stale build: ${file} differs from the checkout (re-run build:release)`)
+}
+
 const patch = readFileSync(path.join(distDir, 'cordis.patch.yml'), 'utf8')
 if (!patch.includes("name: '@ailunsin/dsh-review-gate'")) fail('cordis.patch.yml does not name the package')
 if (!patch.includes('id: review-gate')) fail('cordis.patch.yml does not insert the review-gate row')

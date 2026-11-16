@@ -186,18 +186,24 @@ export function compileScope(globs, options = {}) {
     if (!enabled) return true
     const absolute = normalizePath(absolutePath)
     const relative = relativePath(absolutePath, cwd)
+    const outside = relative === '..'
+      || relative.startsWith('../')
+      || path.isAbsolute(relative)
+    const matches = (item) => item.absolute
+      ? item.regex.test(absolute)
+      : !outside && item.regex.test(relative)
     for (const item of compiled) {
-      if (!item.negated) continue
-      const candidate = item.absolute ? absolute : relative
-      if (item.regex.test(candidate)) return false
+      if (item.negated && matches(item)) return false
     }
-    if (!hasPositive) return true
-    for (const item of compiled) {
-      if (item.negated) continue
-      const candidate = item.absolute ? absolute : relative
-      if (item.regex.test(candidate)) return true
+    if (hasPositive) {
+      for (const item of compiled) {
+        if (!item.negated && matches(item)) return true
+      }
+      return false
     }
-    return false
+    // Exclusion-only scope means "inside the workspace except these paths".
+    // It must not silently become disk-wide just because the candidate is outside.
+    return !outside
   }
 
   return {
