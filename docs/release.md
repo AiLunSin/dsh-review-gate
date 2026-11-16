@@ -7,14 +7,14 @@
 | 形态 | 状态 | 阻塞 |
 |---|---|---|
 | GitHub 仓库 | 本地 git 已初始化；远程仓库不存在 | 本机没有 `gh`，也没有可推送凭据；需账号持有人创建仓库或提供凭据 |
-| npm 包 | `dist/` 产物与 tarball 已生成；`npm pack` / 临时 profile 安装通过；本机 Desktop profile 安装 0.3.0 并通过 Client Inspect 确认页签 body 注册 | `npm whoami` 返回 **E401**；需账号持有人 `npm login`（含 2FA/OTP） |
+| npm 包 | `dist/` 产物与 tarball 已生成；`npm pack` / 临时 profile 安装通过；本机 Desktop profile 安装 0.3.0 并通过 Client Inspect 确认页签 body 注册 | 尚未 `npm publish`；`npm whoami` 已是 `ailunsin`，但 2FA/OTP 可能仍需要 |
 | 自建索引 | `index.json` 已生成并通过官方 `parseMarketIndex` 校验 | 索引 URL 依赖 GitHub raw/Pages；需先完成 GitHub 发布 |
 
 已确认的事实：
 
 - npm 无 scope 名称 `dsh-review-gate` **已被无关项目占用**（0.2.0，post-turn code review），因此发布名固定为 `@ailunsin/dsh-review-gate`。
 - `npm view @ailunsin/dsh-review-gate` 返回 404，名称可用。
-- 本机 `npm whoami`：`E401 Unauthorized`。
+- 本机 `npm whoami`：`ailunsin`（已登录；发布仍可能需要 OTP）。
 - 本机没有 `gh` CLI；`git ls-remote https://github.com/AiLunSin/dsh-review-gate.git` 返回 "Repository not found"。
 - 官方索引解析器校验通过：`plugins=1, versions=1`。
 
