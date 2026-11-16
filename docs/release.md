@@ -1,4 +1,4 @@
-# 发布手册（dsh-review-gate 0.2.0）
+# 发布手册（dsh-review-gate 0.3.0）
 
 本文件记录三种发布形态（D4）的实际状态、命令与当前阻塞项。日期：2026-11-17。
 
@@ -7,7 +7,7 @@
 | 形态 | 状态 | 阻塞 |
 |---|---|---|
 | GitHub 仓库 | 本地 git 已初始化；远程仓库不存在 | 本机没有 `gh`，也没有可推送凭据；需账号持有人创建仓库或提供凭据 |
-| npm 包 | `dist/` 产物与 tarball 已生成；`npm pack` / 临时 profile 安装通过；本机 Desktop profile 已安装 0.2.0 并通过 Client Inspect 确认页签 body 注册 | `npm whoami` 返回 **E401**；需账号持有人 `npm login`（含 2FA/OTP） |
+| npm 包 | `dist/` 产物与 tarball 已生成；`npm pack` / 临时 profile 安装通过；本机 Desktop profile 安装 0.3.0 并通过 Client Inspect 确认页签 body 注册 | `npm whoami` 返回 **E401**；需账号持有人 `npm login`（含 2FA/OTP） |
 | 自建索引 | `index.json` 已生成并通过官方 `parseMarketIndex` 校验 | 索引 URL 依赖 GitHub raw/Pages；需先完成 GitHub 发布 |
 
 已确认的事实：
@@ -38,14 +38,14 @@ npm pack --dry-run --json        # 在 dist 目录内，确认文件清单
 ```powershell
 cd dist\ailunsin--dsh-review-gate
 npm pack
-# -> ailunsin-dsh-review-gate-0.2.0.tgz
+# -> ailunsin-dsh-review-gate-0.3.0.tgz
 ```
 
 本机已生成并验证：
 
-- `dist/ailunsin--dsh-review-gate/ailunsin-dsh-review-gate-0.2.0.tgz`
+- `dist/ailunsin--dsh-review-gate/ailunsin-dsh-review-gate-0.3.0.tgz`
 - 用该 tarball 向临时 headless profile `plugin add` 成功，`--dump-config` 含 `@ailunsin/dsh-review-gate` 与 `id: review-gate`。
-- 本机 Desktop profile 安装 0.2.0：`application: applied`；Client Inspect 的 `sidebar.right.pane.tab` occupants 含 `@ailunsin/dsh-review-gate`（active）。
+- 本机 Desktop profile 安装 0.3.0：`application: applied`；Client Inspect 的 `sidebar.right.pane.tab` occupants 含 `@ailunsin/dsh-review-gate`（active）。
 
 ## 2. npm 发布（需账号持有人）
 
@@ -66,14 +66,14 @@ npm publish --access public --otp <6 位 OTP>
 或使用仓库内脚本（会先检查 dist 与登录态）：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\publish-npm.ps1 -Version 0.2.0
+powershell -ExecutionPolicy Bypass -File scripts\publish-npm.ps1 -Version 0.3.0
 ```
 
 发布后安装验证：
 
 ```powershell
 # 新临时 profile 或用户 profile
-dsh plugin add @ailunsin/dsh-review-gate@0.2.0
+dsh plugin add @ailunsin/dsh-review-gate@0.3.0
 ```
 
 ## 3. GitHub 发布
@@ -89,8 +89,8 @@ gh repo create AiLunSin/dsh-review-gate --public --source . --remote origin --pu
 # 或先在网页创建空仓库，再
 git remote add origin https://github.com/AiLunSin/dsh-review-gate.git
 git push -u origin main
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 推送前确认：

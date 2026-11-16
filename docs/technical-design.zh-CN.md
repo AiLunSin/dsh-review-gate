@@ -381,7 +381,7 @@ function approvalAvailability(ctx, agent): 'available' | 'never' | 'absent' {
   "durationMs": 7.3,
   "degraded": false,
   "dshVersion": "0.2.2-rc.3",
-  "pluginVersion": "0.2.0"
+  "pluginVersion": "0.3.0"
 }
 ```
 
@@ -448,7 +448,15 @@ function buildUnits(files: ChangedFile[], cfg: ReviewConfig): ReviewUnit[] {
 - `reasons` 实际产出："包含入口文件 X"、"改动量 +A/−D"、"二进制/超大文件"、"其余 N 个文件合并"。
 - 稳定性：输入按 path 排序后再分组，输出对同一输入恒定。
 
-### 9.3 侧栏页签（实际）
+### 9.3 P2 实际（v0.3.0）
+
+- **导入图**：Host 路由 `GET /api/review-gate.units?sessionId&seq` 经 `ctx.connection.fetch.register` 注册（认证 fence），读取本轮改动文件（≤40 个、每个 ≤64KB），解析相对 JS/TS `import/export/require` 与 Python `from .` import，只在改动文件集合内建无向边；按入口可达弱连通分量分组，否则回退目录分组。Client 先取该路由，路由/FS 不可用时回退 P1 的 `api/changes.summary` + 目录分组。
+- **决策提示**：从 `review.decisionSources`（默认 CLAUDE.md/AGENTS.md/docs/adr/docs/decisions/docs/decisions.md，≤20 文件）、以及改动文件内 `@decision` 注释抽取；只有同时具备显式 `Applies to:` 范围（或注释自身的文件）与反引号标识符时才可标注。对命中文件取 `workspaceChanges.diff`（≤8 文件），仅当被删行包含该标识符时产生 `hints`；标注为建议性，不阻断。
+- **Client**：route 返回 `units`/`hints` 时直接渲染；顶部显示 `import graph`/`directory grouping`；决策提示按单元文件过滤展示；无 route 时静默回退。
+- **边界**：不跟包名 import、不做跨包图；不做 LLM 语义判断；决策文本可能很长，响应只带首个命中标识符的决策，不返回代码正文。
+- **测试**：`review-units`（导入/TS .js→.ts/Python/合并/目录回退）、`decisions`（ADR/指令/注释/删除行）、`review-route`（认证 handler 形状、hints、降级）与 plugin route 注册。
+
+### 9.4 侧栏页签（实际）
 
 | 区块 | 内容 |
 |---|---|
@@ -521,6 +529,9 @@ dsh-review-gate/
 │  ├─ glob.js               # 零依赖 glob
 │  ├─ scope.js              # command 解析 + session projection
 │  ├─ projections.js        # review-gate/changes / meta
+│  ├─ review-units.js       # P2 导入图分组
+│  ├─ decisions.js          # P2 ADR/指令/注释 + 矛盾提示
+│  ├─ review-route.js       # P2 认证 /api/review-gate.units
 │  ├─ commands.js
 │  ├─ adapters.js
 │  ├─ rules.js
@@ -545,7 +556,7 @@ dsh-review-gate/
 ```json
 {
   "name": "@ailunsin/dsh-review-gate",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Deterministic pre-write scope gate and review sequencing for DeepSeek Harness",
   "license": "MIT",
@@ -657,7 +668,7 @@ window.__ModuleLoader__.load({
 
 | 层级 | 内容 | 工具 |
 |---|---|---|
-| 单元 | glob 匹配表、行差集、规则匹配、决策矩阵、文案格式、路径归一化、配置校验、审查单元分组、projection wire | `node:test`（`test/*.test.js`，117 项） |
+| 单元 | glob 匹配表、行差集、规则匹配、决策矩阵、文案格式、路径归一化、配置校验、审查单元分组、导入解析、决策提示、projection wire | `node:test`（`test/*.test.js`，136 项） |
 | 集成 | 假 `ctx` 驱动 apply / pre-execute / fs 安全网 / guard / 卸载清理；审批桩覆盖 available/never/absent | `node:test` |
 | 端到端 | 真实 DSH headless：never + fs 安全网（`e2e/run.mjs`）；ask→reject / ask→allow + approval 审计（`e2e/approval.mjs`） | 真实 profile |
 | Client | Client Inspect 验证 tab body `@ailunsin/dsh-review-gate` 在 `sidebar.right.pane.tab` active；client.js 单测（工厂注册/分组） | 本机 Desktop profile |
@@ -680,7 +691,7 @@ window.__ModuleLoader__.load({
 |---|---|---|
 | 本地目录 | 插件管理器 `install_bundle` 的目标填绝对路径 | 开发调试 |
 | Git | `install_bundle` 支持 `github:owner/repo`、`git+https://…`、`https://host/owner/repo` | 尝鲜用户 |
-| npm | `@ailunsin/dsh-review-gate@0.2.0` | 正式分发 |
+| npm | `@ailunsin/dsh-review-gate@0.3.0` | 正式分发 |
 | 市场索引 | 自建 `index.json`（HTTPS）→ 用户添加索引 URL | 曝光 |
 
 ### 15.3 npm 与版本兼容
@@ -770,3 +781,5 @@ window.__ModuleLoader__.load({
 6. 子 Agent 的写入会被拦，但 scope 取子会话自身，父会话范围不自动继承；P1 审查单元不含子会话（内置 `workspace/changes` 不记录）。
 7. P1 审查顺序只显示当前会话最近一次 `workspace/changes`；无导入图（P2）；分组是目录/入口启发式，不把敏感规则或越界状态混入排序；依赖内置 `/api/changes.summary` 与 `changes-review` 页签，DSH 升级需回归。
 8. P1 的 Client 视觉/交互（浅色/深色、窄栏、点击跳转）尚未人工验收；只完成了 Client Inspect 注册验证与 client.js 单测。
+9. P2 决策提示只认可显式 `Applies to:` 范围 + 反引号标识符命中，属保守启发式；无结构化范围的 ADR 不会提示，可能漏报，不构成合规证明。导入图只解析改动文件之间的相对 import，不跟包名/跨包。
+10. P2 Host 路由经 Connection 认证；无 Web/Connection 的 profile（如 headless）不注册，Client 回退 P1 目录分组。

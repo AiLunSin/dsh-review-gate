@@ -24,11 +24,17 @@
 
 ### P1 Client 注册证据
 
-- 安装 `@ailunsin/dsh-review-gate@0.2.0` 到本机 Desktop profile，`install_bundle` 返回 `application: applied`。
+- 安装 `@ailunsin/dsh-review-gate@0.3.0` 到本机 Desktop profile，`install_bundle` 返回 `application: applied`。
 - `cordis_inspect_query`（Client）`Slots.listSubTree(root='sidebar.right.pane.tab')` 的 `occupants` 出现
   `{key:'@ailunsin/dsh-review-gate', active:true}`。
 - Client bundle 在页面内注册了 `sidebarRightTabs` 类型（`kind:'review-gate'`）与 body；tab 类型注册失败会在 body 之前抛错，因此 active body 同时证明类型注册成功。
 - 视觉渲染、窄栏/浅深色与“点击文件跳转”的人工验收未完成。
+
+### P2 Host 路由证据
+
+- `review-route` 单测用真实 `Request`/`Response` 形状覆盖 200 图分组 + ADR hint、400 参数、404 summary、503 无 workspaceChanges、无 FS 时目录回退。
+- 路由注册在 `connection` 服务上，经 `ctx.inject(['connection'])` 延迟注册，避免加载顺序导致静默缺失；headless 无 Connection 时不注册（e2e 回归 PASS）。
+- 真实浏览器中的 `/api/review-gate.units` 请求与决策提示渲染未人工验收。
 
 ---
 
@@ -80,7 +86,7 @@ e2e: PASS pre-execute deny/allow + fs safety net + audit + no out-of-scope file
 
 | 项 | 结果 |
 |---|---|
-| 单元/集成测试 | `node --test "test/*.test.js"`：**117 passed / 0 failed**（glob、scope、rules、adapters、decide、audit、config、projection、client 分组/注册/空态渲染、plugin 生命周期、approval 回执、fs realpath 安全网、fs intent 委托） |
+| 单元/集成测试 | `node --test "test/*.test.js"`：**136 passed / 0 failed**（glob、scope、rules、adapters、decide、audit、config、projection、client 分组/注册/空态渲染、导入图/决策提示/认证路由、plugin 生命周期、approval 回执、fs realpath 安全网、fs intent 委托） |
 | 真实 DSH e2e | 两条均 PASS：`e2e/run.mjs`（never + fs 安全网）、`e2e/approval.mjs`（ask→拒绝 / ask→允许 + approval 审计） |
 | 决策性能基准 | 2,000 次范围内 write 决策，P95 < 50ms、均值 < 10ms（单测断言；本机实际远低于） |
 | 隐私 | 审计白名单丢弃 `content`/`old_string`；e2e 断言审计文本不含敏感源码 |
@@ -96,3 +102,4 @@ e2e: PASS pre-execute deny/allow + fs safety net + audit + no out-of-scope file
 5. 大文件/远程 fs：`readText` 无 `maxBytes` 参数，依赖 `stat.size` 上限；后端不报 size 时可能先整读再丢弃。
 6. 审批不可用但服务存在且无 answerer 时，`allow` 降级不生效（见 §3.6）。
 7. P1 只显示当前会话最近一次 `workspace/changes`；分组是目录/入口启发式，无导入图；单元排序不含敏感/越界状态（范围在顶部展示）。
+8. P2 决策提示只认可显式 `Applies to:` + 反引号标识符，可能漏报；导入图不跟包名/跨包；Host 路由上限 40 文件/8 diff/20 决策文件。

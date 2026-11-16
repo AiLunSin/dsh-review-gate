@@ -24,6 +24,7 @@ export function createFakeHost(options = {}) {
   const guards = []
   /** @type {any[]} */
   const commands = []
+  const routes = []
   let scopeState = options.scopeState ?? { globs: [], source: 'none' }
   let projectionDefinition
   const projectionDefinitions = []
@@ -40,6 +41,16 @@ export function createFakeHost(options = {}) {
               const index = commands.indexOf(definition)
               if (index >= 0) commands.splice(index, 1)
             }
+          },
+        }
+      }
+      if (service === 'connection' && options.connection === true) {
+        return {
+          fetch: {
+            register(route) {
+              routes.push(route)
+              return async () => {}
+            },
           },
         }
       }
@@ -109,6 +120,7 @@ export function createFakeHost(options = {}) {
     ctx,
     cwd,
     commands,
+    routes,
     guards,
     listeners,
     get projectionDefinition() { return projectionDefinition },
@@ -124,6 +136,7 @@ export function createFakeHost(options = {}) {
       listeners.clear()
       guards.length = 0
       commands.length = 0
+      routes.length = 0
     },
     async runPreExecute(exec) {
       const entries = [...this.listenersFor('tools/pre-execute')]

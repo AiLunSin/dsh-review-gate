@@ -21,6 +21,7 @@ import {
 } from './interceptors.js'
 import { resolveHostLocale } from './locale.js'
 import { registerReviewProjections } from './projections.js'
+import { registerReviewRoute } from './review-route.js'
 import { resolveRuleset } from './rules.js'
 import { registerScopeProjection } from './scope.js'
 
@@ -90,7 +91,9 @@ export async function apply(ctx, rawConfig) {
       reason: 'review-projection-unavailable',
     })
   }
-
+  ctx.inject(['connection'], (scope) => {
+    registerReviewRoute(scope, config)
+  })
   const pendingAsks = new Map()
   const deps = {
     ctx,

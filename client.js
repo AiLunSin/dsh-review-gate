@@ -30,6 +30,7 @@ window.__ModuleLoader__.load({
       previous: 'Previous unit',
       next: 'Next unit',
       whyEntry: 'Contains entry file: {names}',
+      whyImports: 'Linked by imports ({count} edges)',
       whySize: 'Change size +{added}/−{deleted}',
       whyBinary: 'Contains binary or oversized files',
       whyMerge: 'Remaining {count} files merged into this unit',
@@ -39,6 +40,10 @@ window.__ModuleLoader__.load({
       merged: 'Other changes',
       unitFiles: 'Files in this unit',
       ariaUnit: 'Review unit {index}',
+      graphMode: 'import graph',
+      directoryMode: 'directory grouping',
+      decisionTitle: 'Decision hints',
+      decisionSuggest: 'Suggestive only: derived from explicit ADR/CLAUDE.md scopes and backticked identifiers in removed lines.',
     }
 
     const ZH = {
@@ -61,6 +66,7 @@ window.__ModuleLoader__.load({
       previous: '上一组',
       next: '下一组',
       whyEntry: '包含入口文件：{names}',
+      whyImports: '由导入边连接（{count} 条边）',
       whySize: '改动量 +{added}/−{deleted}',
       whyBinary: '包含二进制或超大文件',
       whyMerge: '其余 {count} 个文件合并到本组',
@@ -70,6 +76,10 @@ window.__ModuleLoader__.load({
       merged: '其他改动',
       unitFiles: '本组文件',
       ariaUnit: '审查单元 {index}',
+      graphMode: '导入图分组',
+      directoryMode: '目录分组',
+      decisionTitle: '决策提示',
+      decisionSuggest: '仅为建议：来自显式 ADR/CLAUDE.md 范围与被删行中反引号标识符的匹配。',
     }
 
     const CSS = `
@@ -103,6 +113,10 @@ window.__ModuleLoader__.load({
 .rg-hint { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 1.45; }
 .rg-error { color: var(--dsw-alias-state-error-primary); overflow-wrap: anywhere; }
 .rg-warn { color: var(--dsw-alias-state-warn-primary); }
+.rg-section-title { font-weight: 600; font-size: 12px; color: var(--dsw-alias-state-warn-primary); margin-bottom: 2px; }
+.rg-decisions { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--dsw-alias-state-warn-primary); border-radius: 10px; padding: 8px 12px; background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 6%, transparent); }
+.rg-decision { display: flex; flex-direction: column; gap: 2px; font-size: 12px; line-height: 1.45; }
+.rg-decision-text { overflow-wrap: anywhere; }
 `
 
     /** @param {string} locale @param {string} key @param {Record<string, string|number>} [params] */
@@ -245,6 +259,7 @@ window.__ModuleLoader__.load({
     function reasonText(unit, t) {
       return unit.reasons.map((reason) => {
         if (reason.startsWith('entry:')) return t('whyEntry', { names: reason.slice('entry:'.length) })
+        if (reason.startsWith('imports:')) return t('whyImports', { count: reason.slice('imports:'.length) })
         if (reason.startsWith('size:')) {
           const [, added, deleted] = reason.split(':')
           return t('whySize', { added, deleted })
@@ -261,6 +276,7 @@ window.__ModuleLoader__.load({
     function unitTitle(unit, t) {
       if (unit.key === '.') return t('root')
       if (unit.key === '__merged__') return t('merged')
+      if (unit.key.startsWith('entry:')) return unit.key.slice('entry:'.length)
       return unit.title
     }
 
@@ -289,20 +305,41 @@ window.__ModuleLoader__.load({
         }
         const controller = new AbortController()
         setState({ status: 'loading', data: null, error: null })
-        const query = new URLSearchParams({ sessionId, seq: String(seq) })
-        fetch(`api/changes.summary?${query.toString()}`, {
-          signal: controller.signal,
-          headers: { accept: 'application/json' },
-          credentials: 'same-origin',
-        })
-          .then((response) => {
-            if (response.status === 404) throw new Error('missing')
-            if (!response.ok) throw new Error(`HTTP ${response.status}`)
-            return response.json()
+        const query = new URLSearchParams({ sessionId, seq: String(seq) }).toString()
+        const load = async () => {
+          try {
+            const route = await fetch(`api/review-gate.units?${query}`, {
+              signal: controller.signal,
+              headers: { accept: 'application/json' },
+              credentials: 'same-origin',
+            })
+            if (route.ok) {
+              const data = await route.json()
+              if (data !== null && typeof data === 'object' && Array.isArray(data.units)) {
+                return { ...data, hints: Array.isArray(data.hints) ? data.hints : [] }
+              }
+            }
+          } catch (error) {
+            if (error?.name === 'AbortError') throw error
+            // P1 Host half or a profile without the route: use the built-in summary below.
+          }
+          const response = await fetch(`api/changes.summary?${query}`, {
+            signal: controller.signal,
+            headers: { accept: 'application/json' },
+            credentials: 'same-origin',
           })
+          if (response.status === 404) throw new Error('missing')
+          if (!response.ok) throw new Error(`HTTP ${response.status}`)
+          const data = await response.json()
+          if (data === null || typeof data !== 'object' || !Array.isArray(data.files)) throw new Error('invalid summary')
+          const files = data.files.map((file, index) => ({ ...file, index }))
+          return { ...data, files, units: null, hints: [] }
+        }
+        load()
           .then((data) => {
-            if (data === null || typeof data !== 'object' || !Array.isArray(data.files)) throw new Error('invalid summary')
-            const files = data.files.map((file, index) => ({ ...file, index }))
+            const files = Array.isArray(data.files)
+              ? data.files.map((file, index) => ({ ...file, index }))
+              : []
             setState({ status: 'ready', data: { ...data, files }, error: null })
           })
           .catch((error) => {
@@ -313,14 +350,19 @@ window.__ModuleLoader__.load({
       }, [sessionId, seq, reload])
 
       const files = state.data?.files ?? []
+      const serverUnits = Array.isArray(state.data?.units) ? state.data.units : null
       const units = useMemo(
-        () => buildUnits(files, { maxUnits: meta.maxUnits, entryPatterns: meta.entryPatterns }),
-        [files, meta.maxUnits, meta.entryPatterns],
+        () => serverUnits ?? buildUnits(files, { maxUnits: meta.maxUnits, entryPatterns: meta.entryPatterns }),
+        [serverUnits, files, meta.maxUnits, meta.entryPatterns],
       )
       useEffect(() => {
         if (selected >= units.length) setSelected(0)
       }, [selected, units.length])
       const unit = units[selected]
+      const hints = Array.isArray(state.data?.hints) ? state.data.hints : []
+      const unitHints = unit === undefined
+        ? []
+        : hints.filter(hint => unit.files.some(file => file.path === hint.file))
       const tabInfo = useTabInfo()
 
       if (state.status === 'empty' || state.status === 'idle') {
@@ -392,7 +434,15 @@ window.__ModuleLoader__.load({
       const summaryLine = state.data === null ? null : h('div', { className: 'rg-muted' },
         t('files', { count: state.data.files.length }), ' · ',
         h('span', { className: 'rg-add' }, t('added', { count: state.data.added })), ' ',
-        h('span', { className: 'rg-del' }, t('deleted', { count: state.data.deleted })))
+        h('span', { className: 'rg-del' }, t('deleted', { count: state.data.deleted })),
+        state.data.mode === 'graph' ? ` · ${t('graphMode')}` : state.data.mode === 'directory' ? ` · ${t('directoryMode')}` : null)
+
+      const decisionBlock = unitHints.length === 0 ? null : h('div', { className: 'rg-decisions' },
+        h('div', { className: 'rg-section-title' }, t('decisionTitle')),
+        unitHints.map(hint => h('div', { className: 'rg-decision', key: `${hint.decisionId}:${hint.file}` },
+          h('div', { className: 'rg-decision-text' }, hint.text),
+          h('div', { className: 'rg-muted' }, `${hint.decisionId} · ${hint.source}`))),
+        h('div', { className: 'rg-muted' }, t('decisionSuggest')))
 
       const nav = unit === undefined ? null : h('div', { className: 'rg-nav' },
         h('button', { type: 'button', disabled: selected === 0, onClick: () => setSelected(value => Math.max(0, value - 1)) }, t('previous')),
@@ -410,6 +460,7 @@ window.__ModuleLoader__.load({
           summaryLine,
           chips,
           card,
+          decisionBlock,
           nav,
           openError === '' ? null : h('div', { className: 'rg-error' }, openError),
           h('div', { className: 'rg-hint' }, t('openHint'))))

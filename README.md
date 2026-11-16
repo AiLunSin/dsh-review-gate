@@ -1,6 +1,6 @@
 # dsh-review-gate
 
-> **状态：P0 + P1 已实现（0.2.0）。** P0 通过真实 DSH `0.2.2-rc.3` headless 冒烟；P1 侧栏“审查顺序”页签已注册到当前 Desktop profile，并在 Client Inspect 中确认 active。发布名为 `@ailunsin/dsh-review-gate`（npm 上无 scope 的 `dsh-review-gate` 已被无关项目占用）。P2（导入图分组、决策源标注）尚未实现。
+> **状态：P0 + P1 + P2 已实现（0.3.0）。** P0 通过真实 DSH `0.2.2-rc.3` headless 冒烟；P1 侧栏“审查顺序”页签已在当前 Desktop profile 注册；P2 增加导入图分组与决策提示（Host 认证路由 + 保守启发式）。发布名为 `@ailunsin/dsh-review-gate`（npm 上无 scope 的 `dsh-review-gate` 已被无关项目占用）。
 
 **给 DeepSeek Harness 加上"写入前的确定性边界"和"写入后的审查顺序"。**
 
@@ -38,7 +38,7 @@
 dsh plugin add C:\Users\11403\Desktop\one_too
 
 # npm 发布后：
-dsh plugin add @ailunsin/dsh-review-gate@0.2.0
+dsh plugin add @ailunsin/dsh-review-gate@0.3.0
 ```
 
 安装后在新会话里检查 **Plugins** 中的 **Review gate** 行；改配置后按 DSH 的提示重启或让 HMR 生效。
@@ -65,11 +65,13 @@ dsh plugin add @ailunsin/dsh-review-gate@0.2.0
 右栏的 guide（右侧栏 “+” / guide 页）里会有 **审查顺序** 入口。打开后：
 
 - 读取当前会话最近一次 `workspace/changes`（第 N 轮），拉取 Host 的改动摘要；
+- 优先用 Host 认证路由 `api/review-gate.units`：解析相对 import、按入口可达的连通分量分组，并把命中的 ADR/CLAUDE.md/`@decision` 作为**建议性决策提示**；
+- 路由不可用时回退到 P1 的目录分组（更少数据、无决策提示）；
 - 按目录/入口启发式分成 **3–5 个审查单元**，入口文件优先；
 - 上/下一组切换；点击文件跳到内置 **changes-review** 页签，不重绘 diff；
 - 顶部显示当前 `/review-scope` 范围；没有改动时显示空状态。
 
-数据只读、无正文；没有改动记录时不会请求 Host。
+数据只读、无正文；决策提示只引用决策文本，不把被删代码写回页面。
 
 ## 配置
 
@@ -111,6 +113,13 @@ dsh plugin add @ailunsin/dsh-review-gate@0.2.0
       maxFileBytes: 8388608
     review:
       maxUnits: 5                # 审查单元上限（1–20）
+      importGraph: true          # P2：读取改动文件解析相对 import，做连通分量分组
+      decisionSources:           # P2：ADR / 指令文件来源；空数组关闭
+        - 'CLAUDE.md'
+        - 'AGENTS.md'
+        - 'docs/adr'
+        - 'docs/decisions'
+        - 'docs/decisions.md'
       entryPatterns:             # 入口文件启发式；仅支持 *, **, ?（{a,b}/[]/! 会被拒绝）
         - '**/index.*'
         - '**/main.*'
@@ -158,7 +167,8 @@ dsh plugin add @ailunsin/dsh-review-gate@0.2.0
 5. **审批服务存在但无 answerer 时**（headless / 无 UI），`ask` 由 DSH 管道 fail-closed 成拒绝；`onApprovalUnavailable: allow` 只能覆盖"无审批服务 / 策略 never"两种可判定情形。
 6. **子 Agent / fork**：`fork` 会复制父会话前缀（含 `command/run`），因此范围随 fork 继承；`spawn` 子 Agent 是新会话，scope 取自子会话自身，不自动继承父范围。全局 pre-execute 会拦子 Agent 的写入。
 7. **符号链接 / `~`**：主门通过 `ctx.fs.resolve` 使用扩展后的绝对路径与后端 realpath 判定；同步 `tools.guard` 仍只能按词法路径，作为最后防线。需要符号链接级硬边界时配合 DSH 沙箱。
-8. **P1 审查顺序**：只取当前会话最近一次 `workspace/changes`；分组是“目录 + 入口文件”启发式，不做导入图（P2）；单元风险目前用改动量/二进制/入口代理，不把敏感规则或越界状态混进排序（范围在页签顶部显示）。依赖内置 `/api/changes.summary` 与 `changes-review` 页签，版本升级需回归。
+8. **P1/P2 审查顺序**：只取当前会话最近一次 `workspace/changes`；分组优先导入图，失败/关闭时回退目录；导入图只解析改动文件之间的相对 JS/TS/Python import，不跟 package、不做跨包图。单元排序仍以入口/改动量为主，不把敏感规则或越界状态混入。
+9. **P2 决策提示是保守启发式**：只从显式 `Applies to:` 范围 + 被删行中反引号标识符命中产生；ADR/CLAUDE.md 的表述若没有结构化范围就不会提示；可能漏报，也不构成合规证明。Host 路由经 Connection 认证，读取受 40 文件/8 diff/20 决策文件上限约束。
 
 ## 兼容性
 
@@ -170,7 +180,7 @@ dsh plugin add @ailunsin/dsh-review-gate@0.2.0
 ## 开发
 
 ```text
-node --test "test/*.test.js"   # 117 tests
+node --test "test/*.test.js"   # 136 tests
 node e2e/run.mjs               # 真实 DSH headless：never 策略 + fs 安全网
 node e2e/approval.mjs          # 真实 DSH headless：ask → 拒绝 / ask → 允许 + approval 审计
 node scripts/check-syntax.mjs
@@ -197,7 +207,7 @@ node scripts/build-release.mjs --name @ailunsin/dsh-review-gate
 - [x] M0 技术验证（6/6 关闭；第 5/6 项在 P1 落地）
 - [x] M1 P0：范围门 + 敏感删除 + 审计 + 审批文案 + fs 安全网
 - [x] M2 P1：审查单元与顺序导航（侧栏页签、Client 注册已验证）
-- [ ] M3 P2：导入图分组、决策源标注
+- [x] M3 P2：导入图分组、决策源标注（保守启发式）
 
 ## 文档
 

@@ -55,6 +55,7 @@ export const DEFAULTS = Object.freeze({
   }),
   review: Object.freeze({
     maxUnits: 5,
+    importGraph: true,
     entryPatterns: Object.freeze([
       '**/index.*',
       '**/main.*',
@@ -63,6 +64,13 @@ export const DEFAULTS = Object.freeze({
       '**/cli.*',
       '**/__init__.py',
       '**/mod.*',
+    ]),
+    decisionSources: Object.freeze([
+      'CLAUDE.md',
+      'AGENTS.md',
+      'docs/adr',
+      'docs/decisions',
+      'docs/decisions.md',
     ]),
   }),
 })
@@ -242,7 +250,7 @@ export function resolveConfig(raw) {
   }
 
   const reviewInput = section(input.review, 'review')
-  rejectUnknown(reviewInput, ['maxUnits', 'entryPatterns'], 'review.')
+  rejectUnknown(reviewInput, ['maxUnits', 'entryPatterns', 'importGraph', 'decisionSources'], 'review.')
   const entryPatterns = globArray(
     reviewInput.entryPatterns === undefined ? DEFAULTS.review.entryPatterns : reviewInput.entryPatterns,
     'review.entryPatterns',
@@ -252,9 +260,22 @@ export function resolveConfig(raw) {
       fail(`review.entryPatterns entry ${JSON.stringify(pattern)} uses a construct the Client entry matcher does not support; use only *, ** and ?`)
     }
   }
+  const decisionSources = stringArray(
+    reviewInput.decisionSources === undefined ? DEFAULTS.review.decisionSources : reviewInput.decisionSources,
+    'review.decisionSources',
+  )
+  if (decisionSources.length > 20) fail('review.decisionSources accepts at most 20 entries')
+  for (const source of decisionSources) {
+    if (isAbsolutePath(source) || source.split(/[\\/]/).includes('..')) {
+      fail(`review.decisionSources entry ${JSON.stringify(source)} must be a relative workspace path without ".."`)
+    }
+    if (source.length > 200) fail('review.decisionSources entries must be at most 200 characters')
+  }
   const review = {
     maxUnits: integer(reviewInput.maxUnits, 'review.maxUnits', 1, 20, DEFAULTS.review.maxUnits),
+    importGraph: bool(reviewInput.importGraph, 'review.importGraph', DEFAULTS.review.importGraph),
     entryPatterns,
+    decisionSources,
   }
 
   return {

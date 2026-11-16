@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0 — 2026-11-17
+
+- P2 import-graph grouping: a Host route (`api/review-gate.units`) reads the
+  changed files, parses relative JS/TS/Python imports, and groups changed files
+  by entry-reachable weak components; the Client falls back to P1 directory
+  grouping when the route or FS is unavailable.
+- Decision hints: parse ADR/`docs/decisions` Markdown, CLAUDE.md/AGENTS.md
+  bullets, and `@decision` comments; annotate a unit only when an explicit
+  `Applies to:` scope matches and a removed line contains a backticked
+  identifier from the decision. Suggestions only, never blocking.
+- `review.importGraph` and `review.decisionSources` config; bounded reads and
+  diffs; authenticated Connection route.
+- 136 tests, including import resolution, ADR/comment extraction, decision
+  hints, and the authenticated route handler.
+
 ## 0.2.0 — 2026-11-17
 
 - P1 side panel: a `review-gate` tab type in the Web right sidebar, discovered

@@ -42,6 +42,14 @@ test('plugin: apply registers the projection, command, gate, guard, and fs safet
   ])
 })
 
+test('plugin: registers the authenticated review route when Connection exists', async () => {
+  const host = createFakeHost({ approval: approvalAsk, connection: true })
+  await apply(host.ctx, { audit: { enabled: false } })
+  assert.equal(host.routes.length, 1)
+  assert.equal(host.routes[0].path, '/api/review-gate.units')
+  assert.deepEqual(host.routes[0].methods, ['GET'])
+})
+
 test('plugin: out-of-scope write asks through pre-execute with both locales', async () => {
   const host = createFakeHost({
     scopeState: { globs: ['src/auth/**'], source: 'command' },

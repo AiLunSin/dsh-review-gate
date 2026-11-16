@@ -86,6 +86,17 @@ test('config: review settings are validated', () => {
   assert.throws(() => resolveConfig({ review: { unknown: true } }), /unknown key "review.unknown"/)
 })
 
+test('config: review import graph and decision sources are validated', () => {
+  const config = resolveConfig({ review: { importGraph: false, decisionSources: ['CLAUDE.md', 'docs/adr'] } })
+  assert.equal(config.review.importGraph, false)
+  assert.deepEqual(config.review.decisionSources, ['CLAUDE.md', 'docs/adr'])
+  assert.equal(resolveConfig({}).review.importGraph, true)
+  assert.ok(resolveConfig({}).review.decisionSources.includes('docs/decisions.md'))
+  assert.throws(() => resolveConfig({ review: { importGraph: 'yes' } }), /review.importGraph/)
+  assert.throws(() => resolveConfig({ review: { decisionSources: ['../secret'] } }), /review.decisionSources/)
+  assert.throws(() => resolveConfig({ review: { decisionSources: ['/abs/path'] } }), /review.decisionSources/)
+})
+
 test('config: explicit empty arrays are preserved', () => {
   const config = resolveConfig({ scope: { default: [] }, rules: { ignorePaths: [] }, protectedPaths: [] })
   assert.deepEqual(config.scope.default, [])
