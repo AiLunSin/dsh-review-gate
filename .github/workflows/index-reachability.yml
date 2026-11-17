@@ -1,0 +1,32 @@
+name: index-reachability
+
+# DSH fetches the market index URL directly and rejects redirects. Local networks
+# can block raw.githubusercontent.com; a GitHub-hosted runner is the external
+# network that decides whether the URL is served as a direct 200 with the same
+# bytes as the repository. The script retries because the raw CDN lags a push.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - index.json
+      - icon.svg
+      - scripts/check-raw-index.mjs
+      - .github/workflows/index-reachability.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  raw:
+    if: github.repository == 'AiLunSin/dsh-review-gate'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: raw index and icon must be direct 200s with identical bytes
+        run: node scripts/check-raw-index.mjs

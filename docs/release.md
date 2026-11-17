@@ -6,10 +6,10 @@
 
 | 形态 | 状态 |
 |---|---|
-| GitHub 仓库 | 已推送 public 仓库 `https://github.com/AiLunSin/dsh-review-gate`；tag `v0.1.0` / `v0.2.0` / `v0.3.0` 已推送，`v0.3.1` 待推送 |
-| GitHub Release | `v0.3.0` 已发布；`v0.3.1` Release 已创建，tarball 附件待上传 |
+| GitHub 仓库 | 已推送 public 仓库 `https://github.com/AiLunSin/dsh-review-gate`；tag `v0.1.0` / `v0.2.0` / `v0.3.0` / `v0.3.1` 已推送 |
+| GitHub Release | `v0.3.0` / `v0.3.1` 已发布；v0.3.1 附 `ailunsin-dsh-review-gate-0.3.1.tgz`（80,178 B，sha256 `cc8874e5…`） |
 | npm 包 | `@ailunsin/dsh-review-gate@0.3.1` 已发布（`latest=0.3.1`；31 files） |
-| CI | GitHub Actions 在 `main` f31304a 上通过（lint、单测、构建、索引结构校验；e2e 不在 CI） |
+| CI | GitHub Actions 在 `main` 上通过（lint、单测、构建、索引结构校验）；新增 `index-reachability` workflow，首次 run 待记录 |
 | 自建索引 | `index.json` 含 0.3.1；`publishTimestamp=1794896317`（2026-11-17T06:18:37Z，npm 实际发布时间） |
 | 本地 Desktop profile | junction 到本地 `dist/ailunsin--dsh-review-gate`（0.3.1），用于开发验证，与 npm tarball 独立 |
 
@@ -20,8 +20,8 @@
 - 本机 `npm whoami`：`ailunsin`。
 - 本机没有 `gh` CLI；仓库已通过 git 推送，维护不需要 `gh`。
 - 官方索引解析器校验通过：`plugins=1, versions=2`。
-- 索引 raw URL 未能从本机网络验证（curl 返回 000、PowerShell 超时）；GitHub API 已确认 `index.json` 在 `main` 且含 0.3.1。上线前请在外部网络确认 raw URL 200 直出且无重定向。
-- 本地 `main` 当前与 `origin/main` 一致（93e99eb）；v0.3.1 tag 与 Release 仍需推送/创建。
+- 索引 raw URL 未能从本机网络验证（curl 返回 000、PowerShell 超时）；GitHub API 已确认 `index.json` 在 `main` 且含 0.3.1。已新增 `index-reachability` workflow，由 GitHub Actions runner 断言 raw 200 直出 + 内容 sha256 一致，首次 run 结果待记录。
+- 本地 `main` 已与 `origin/main` 一致（`c47a9da`）；`v0.3.1` tag 已推送，Release 已创建并上传 tarball 附件。
 
 ## 1. 构建发布包
 
@@ -86,12 +86,12 @@ dsh plugin add @ailunsin/dsh-review-gate@0.3.1
 
 ## 3. GitHub 发布
 
-仓库：`https://github.com/AiLunSin/dsh-review-gate`（`main` 已推送）。0.3.1 的 npm 包已发布；tag 与 Release 待推送/创建：
+仓库：`https://github.com/AiLunSin/dsh-review-gate`（`main` 与 tag `v0.3.1` 已推送）。0.3.1 已完成（npm 包 + Release 附件）；下一个版本沿用：
 
 ```powershell
-git tag v0.3.1
+git tag v0.3.2
 git push origin main
-git push origin v0.3.1
+git push origin v0.3.2
 ```
 
 推送前确认：
@@ -101,7 +101,7 @@ git status --short
 git remote -v
 ```
 
-`.github/workflows/ci.yml` 会在 push/PR 时跑 lint、单测、构建、索引结构校验；e2e 需要 DSH 安装，默认不跑（可用手动 workflow 或本机执行）。
+`.github/workflows/ci.yml` 会在 push/PR 时跑 lint、单测、构建、索引结构校验；`.github/workflows/index-reachability.yml` 在 `main` 的 `index.json`/`icon.svg` 变更时由 GitHub runner 验证 raw 200 直出与内容一致。e2e 需要 DSH 安装，默认不跑。
 
 ## 4. 自建索引
 
@@ -113,7 +113,7 @@ https://raw.githubusercontent.com/AiLunSin/dsh-review-gate/main/index.json
 
 注意：
 
-- DSH 对索引 URL **严格按给定 URL 请求并拒绝重定向**；raw.githubusercontent.com 是 200 直出，可用。若用 GitHub Pages，请确认最终地址不跳转。
+- DSH 对索引 URL **严格按给定 URL 请求并拒绝重定向**；raw 必须 200 直出。仓库已用 `index-reachability` workflow 自动断言（首次 run 待记录）；GitHub Pages 的最终地址同样不能跳转。
 - `versions[].publishTimestamp` 是 **Unix 秒**（不是 ISO 字符串）；0.3.1 已使用 npm 实际发布时间 `1794896317`，后续版本发布后同样更新并重新校验。
 - `icon` 是绝对 raw URL；索引解析器校验通过。
 - 发布前重新验证：

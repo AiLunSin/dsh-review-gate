@@ -6,7 +6,8 @@
 
 - **0.3.0 的问题**：已发布 tarball 内注册的 Fetch 回调按位置参数调用 `handleReviewRequest(ctx, config, request)`，而 handler 只接收一个 options 对象；每个 P2 请求在读取坐标前抛错，客户端静默回退 P1。0.3.1 改为 `handleReviewRequest({ ctx, config, request })`。
 - **npm 0.3.1**：2026-11-17T06:18:37Z 发布，31 files；核验 tarball 内路由为 `/api/review-gate.units`、调用为 options 对象、无 `src/review-gate-e2e/` 测试夹具。
-- **市场索引**：`index.json` 含 0.3.1（`publishTimestamp=1794896317`），官方解析器 `PASS (plugins=1, versions=2)`；GitHub `main` 内容已确认（sha `52aa0519`）。
+- **市场索引**：`index.json` 含 0.3.1（`publishTimestamp=1794896317`），官方解析器 `PASS (plugins=1, versions=2)`；GitHub `main` 内容已确认（blob sha `52aa0519`；本地 2,102 B / sha256 `48558004015baac33e6cd3e8e1c64c1f8aa1ea21dd07dbbc7fb89b62c1c2aceb`）。
+- **GitHub Release**：`v0.3.1` 已创建（2026-11-17T10:52:57Z），附件 `ailunsin-dsh-review-gate-0.3.1.tgz` 已上传（80,178 B，digest `sha256:cc8874e57737ae19ae03f283f0bc54224764e89e2a573a4e6c8a5836e51318cd`），与 release body 一致。
 - **A7 安装验证**：全新 headless profile `dsh plugin add @ailunsin/dsh-review-gate@0.3.1` 成功，`--dump-config` 含 `id: review-gate`；`dsh plugin remove` 后无残留行。
 - **B4 决策提示**：实际「审查顺序」页签显示 `DOC-CLAUDE.md:3` / `CLAUDE.md` 的建议性提示，仅命中 `a.test.ts`；`b.test.ts` 无提示。夹具随后已删除。
 - **B6 路由活体**：临时 DSH web 实例（真实 0.2.2-rc.3 + 本地 dist）鉴权后请求：`/api/review-gate.units` 返回 400 `sessionId and seq are required.`；带坐标返回 404 `Change summary unavailable.`；`/review-gate.units` 返回 404；对照 `api/changes.summary` 返回 400。
@@ -16,7 +17,6 @@
 
 ## 未闭环
 
-- **GitHub Release v0.3.1**：Release 页面已创建（2026-11-17T10:52:57Z），但 API 返回 `assets=0`；`dist/ailunsin-dsh-review-gate-0.3.1.tgz` 的 SHA256 与 release body 中写明的 `cc8874e5…` 一致，等待上传附件。
+- **索引 raw 可达性**：本机网络超时（GitHub API 可读）；已新增 `.github/workflows/index-reachability.yml` + `scripts/check-raw-index.mjs`，由 GitHub Actions runner 断言 raw 200 直出且与仓库字节一致，等待首次 run 回填结论。
 - **B5 视觉**：导入图/目录标签的浏览器肉眼确认未做，只有数据层与客户端代码路径证据。
 - **B8–B10、B12**：浅/深色与窄栏、fresh-start 激活、配置覆盖即时生效、真实大轮次未人工验收。
-- **索引 raw URL**：本机网络超时（GitHub API 可读），需外部网络确认 raw 地址无重定向。
