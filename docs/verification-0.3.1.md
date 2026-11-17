@@ -1,6 +1,6 @@
-# 0.3.1 验证记录（2026-11-17）
+# 0.3.1 / 0.3.2 验证记录（2026-11-17 / 18）
 
-本文件记录 0.3.0 P2 路由 bug 的修复与 0.3.1 发布相关的实际验证结果，供下一个版本回归时对照。
+本文件记录 0.3.0 P2 路由 bug 的修复、0.3.1 发布以及 0.3.2 的 UI 恢复与实机验收结果，供下一个版本回归时对照。
 
 ## 已闭环
 
@@ -14,12 +14,26 @@
 - **B6 路由活体**：临时 DSH web 实例（真实 0.2.2-rc.3 + 本地 dist）鉴权后请求：`/api/review-gate.units` 返回 400 `sessionId and seq are required.`；带坐标返回 404 `Change summary unavailable.`；`/review-gate.units` 返回 404；对照 `api/changes.summary` 返回 400。
 - **B7 审批**：删除 `hasPermission` 行触发 `RG-AUTH-001` + `RG-GUARD-002`，决策 `ask`，审批结果 `allowed-once`，审计同时有 decision 与 approval 记录。
 - **B5 数据层**：真实临时文件构造相对 import 链；默认配置返回 `mode: "graph"`，入口单元包含 `index.ts`/`auth/login.ts`/`utils/hash.ts`；`review.importGraph: false` 时返回 `mode: "directory"`；客户端在 `client.js` 中渲染 `graphMode`/`directoryMode` 标签。
-- **测试**：`138/138` pass，`npm run lint` 通过（43 JS + 4 JSON）。
+- **测试**：`139/139` pass，`npm run lint` 通过（43 JS + 4 JSON）。
+
+## B8/B9/B10/B12 验收（0.3.2，computer-use 实机）
+
+以下 B8/B9/B12 为 2026-11-18 的实机验收结果；仓库侧无法复现应用窗口最小宽度和主题切换。
+
+| 项 | 结果 |
+|---|---|
+| B8 浅/深色 | 浅色页签正常（header、范围、轮次、单元卡、文件行、+N/−N 配色）；设置 → 通用设置 → 外观切到深色后重新渲染，无丢失文字、无低对比残留；验收后恢复“跟随系统”。 |
+| B8 窄栏 | 应用最小窗宽 534px（内容区约 520px），页签自适应单列，长路径 `docs/verification-0.3.1.md` 不截断、无横向滚动；390px 精确档无法在应用中达到，改用静态 CSS 检查（无 `min-width: ≥300px`、无 `width:390px`、无 `overflow-x` 硬规则）。 |
+| B9 fresh-start | `dsh.client.immediately:false` 已确认；从“应用 → 退出”完全退出（进程全部消失），00:10:47 重启；未做任何插件操作，右栏页签仍注册并渲染，旧轮次显示 0.3.2 的明确提示：“Host 已不再提供本轮的改动数据。请跑一轮新的、会写文件的对话以刷新本页签。”，不再是空白误导态。 |
+| B10 配置层 | 临时 profile（0.3.2 tarball）：默认 `--dump-config` 只有 `enabled/scope/onApprovalUnavailable`，无 `review` 段；加 patch 后为 `review.maxUnits: 9`、`review.importGraph: false`、`review.decisionSources: [docs/decisions.md]`，键名与层级被接受、无冲突。 |
+| B12 大轮次 | 第 19 轮 7 文件（u1–u6 + 入口 `u3/index.test.ts`）：导入图分组，入口单元第 1，理由“包含入口文件：index.test.ts · 由导入边连接（2 条边）· 改动量 +9/−0”；第 21 轮 6 个独立目录：5 个 chips，最后一个为“其他改动”，触发 `maxUnits: 5` 合并；上/下一组跨 5 组正常；点击 `.tmp/g2/b.ts` 打开“第 21 轮改动”，路径与 diff 对应，未落到首个文件。 |
+
+B5 视觉由 B12 的第 19/21 轮实际页签覆盖（导入图分组、目录分组/其他改动均可见）。
 
 ## 未闭环
 
-- **B5 视觉**：导入图/目录标签的浏览器肉眼确认未做，只有数据层与客户端代码路径证据。
-- **B8–B10、B12**：浅/深色与窄栏、fresh-start 激活、配置覆盖即时生效、真实大轮次未人工验收。
+- **B10 运行中热生效**：配置合成已验证；运行中修改 profile patch 后，页签单元数是否即时变化，尚未在界面确认。profile patch 属于启动期层；若要验证，应在应用内使用受支持的配置编辑路径，或重启后确认，不能仅凭编辑文件推断。
+- **390px 精确档**：受应用最小窗宽限制（534px），只有静态 CSS 兜底；如需像素级验收，需 DevTools 设备模拟或调整应用最小窗宽。
 
 ## 已知限制（重启后的 review 投影）
 
