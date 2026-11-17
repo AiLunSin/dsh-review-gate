@@ -7,7 +7,7 @@
 | 形态 | 状态 |
 |---|---|
 | GitHub 仓库 | 已推送 public 仓库 `https://github.com/AiLunSin/dsh-review-gate`；tag `v0.1.0` / `v0.2.0` / `v0.3.0` 已推送，`v0.3.1` 待推送 |
-| GitHub Release | `v0.3.0` 已发布；`v0.3.1` Release 待创建（npm 包已发布） |
+| GitHub Release | `v0.3.0` 已发布；`v0.3.1` Release 已创建，tarball 附件待上传 |
 | npm 包 | `@ailunsin/dsh-review-gate@0.3.1` 已发布（`latest=0.3.1`；31 files） |
 | CI | GitHub Actions 在 `main` f31304a 上通过（lint、单测、构建、索引结构校验；e2e 不在 CI） |
 | 自建索引 | `index.json` 含 0.3.1；`publishTimestamp=1794896317`（2026-11-17T06:18:37Z，npm 实际发布时间） |

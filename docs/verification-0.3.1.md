@@ -16,7 +16,7 @@
 
 ## 未闭环
 
-- **GitHub Release v0.3.1**：tag `v0.3.1` 已推送；本机无 `gh`/API token，Release 页面仍未创建。
+- **GitHub Release v0.3.1**：Release 页面已创建（2026-11-17T10:52:57Z），但 API 返回 `assets=0`；`dist/ailunsin-dsh-review-gate-0.3.1.tgz` 的 SHA256 与 release body 中写明的 `cc8874e5…` 一致，等待上传附件。
 - **B5 视觉**：导入图/目录标签的浏览器肉眼确认未做，只有数据层与客户端代码路径证据。
 - **B8–B10、B12**：浅/深色与窄栏、fresh-start 激活、配置覆盖即时生效、真实大轮次未人工验收。
 - **索引 raw URL**：本机网络超时（GitHub API 可读），需外部网络确认 raw 地址无重定向。
