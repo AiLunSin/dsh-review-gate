@@ -288,6 +288,11 @@ window.__ModuleLoader__.load({
       return encodeURIComponent(value)
     }
 
+    /** @param {string} message @returns {'empty' | 'error'} */
+    function failureStatus(message) {
+      return message === 'missing' ? 'empty' : 'error'
+    }
+
     /** @param {string} status @returns {string} */
     function statusClassName(status) {
       return status === 'missing' || status === 'error' ? 'rg-state rg-state-left' : 'rg-state'
@@ -388,7 +393,8 @@ window.__ModuleLoader__.load({
           })
           .catch((error) => {
             if (error?.name === 'AbortError') return
-            setState({ status: error?.message === 'missing' ? 'missing' : 'error', data: null, error: String(error?.message ?? error) })
+            const status = failureStatus(error?.message)
+            setState({ status, data: null, error: status === 'empty' ? null : String(error?.message ?? error) })
           })
         return () => controller.abort()
       }, [sessionId, seq, reload])
@@ -527,7 +533,7 @@ window.__ModuleLoader__.load({
           locale: NS,
         }, ReviewGateTab)), 'review-gate: tab body')
       },
-      __test: { buildUnits, isEntry, entryPatternRegex, translate, ReviewGateTab, shouldShowOpenHint, statusClassName, statusView, resetBodyScroll },
+      __test: { buildUnits, isEntry, entryPatternRegex, translate, ReviewGateTab, shouldShowOpenHint, statusClassName, statusView, resetBodyScroll, failureStatus },
     }
   },
 })

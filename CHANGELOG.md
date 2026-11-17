@@ -6,7 +6,10 @@
   file-open hint only renders in the ready state when at least one changed file
   exists. `missing`/`error` state rendering and scroll reset are now testable
   helpers, with coverage for both states and the empty-file ready state.
-- 141 tests.
+- Stale projection after a DSH restart now resets to the empty state when the
+  Host no longer serves the persisted turn's summary, instead of rendering a
+  missing/old-turn card.
+- 142 tests.
 
 ## 0.3.2 — 2026-11-17
 

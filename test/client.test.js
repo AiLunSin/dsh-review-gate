@@ -122,6 +122,13 @@ test('client: scroll reset is safe for empty and mounted bodies', () => {
   assert.doesNotThrow(() => resetBodyScroll({ current: null }))
 })
 
+test('client: a missing Host summary resets to the empty state', () => {
+  const { failureStatus } = plugin.__test
+  assert.equal(failureStatus('missing'), 'empty')
+  assert.equal(failureStatus('HTTP 500'), 'error')
+  assert.equal(failureStatus(undefined), 'error')
+})
+
 test('client: apply registers the dictionary, tab type, and body', () => {
   const dictionaries = []
   const types = []
