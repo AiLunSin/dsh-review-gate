@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1 — 2026-11-17
+
+- Fix the P2 authenticated review route: the registered Fetch callback passed
+  `(ctx, config, request)` positionally while `handleReviewRequest` takes one
+  options object, so every P2 request threw and the client silently fell back
+  to P1. Decision hints now render; 0.3.0 shipped with this bug.
+- Add a route-wiring test and pin the route path to the browser-relative client
+  fetch contract. 138 tests.
+
 ## 0.3.0 — 2026-11-17
 
 - P2 import-graph grouping: a Host route (`api/review-gate.units`) reads the
