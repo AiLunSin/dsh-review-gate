@@ -1,6 +1,6 @@
 # dsh-review-gate
 
-> **状态：P0 + P1 + P2 已实现（0.3.0）。** P0 通过真实 DSH `0.2.2-rc.3` headless 冒烟；P1 侧栏“审查顺序”页签已在当前 Desktop profile 注册；P2 增加导入图分组与决策提示（Host 认证路由 + 保守启发式）。发布名为 `@ailunsin/dsh-review-gate`（npm 上无 scope 的 `dsh-review-gate` 已被无关项目占用）。
+> **状态：P0 + P1 + P2 已实现（0.3.1）。** P0 通过真实 DSH `0.2.2-rc.3` headless 冒烟；P1 侧栏“审查顺序”页签已在当前 Desktop profile 注册；P2 增加导入图分组与决策提示（Host 认证路由 + 保守启发式）。发布名为 `@ailunsin/dsh-review-gate`（npm 上无 scope 的 `dsh-review-gate` 已被无关项目占用）。
 
 **给 DeepSeek Harness 加上"写入前的确定性边界"和"写入后的审查顺序"。**
 
@@ -38,7 +38,7 @@
 dsh plugin add C:\Users\11403\Desktop\one_too
 
 # npm 发布后：
-dsh plugin add @ailunsin/dsh-review-gate@0.3.0
+dsh plugin add @ailunsin/dsh-review-gate@0.3.1
 ```
 
 安装后在新会话里检查 **Plugins** 中的 **Review gate** 行；改配置后按 DSH 的提示重启或让 HMR 生效。
@@ -194,7 +194,7 @@ node scripts/build-release.mjs --name @ailunsin/dsh-review-gate
 发布形态（D4）：GitHub + npm + 自建索引。
 
 - GitHub：`AiLunSin/dsh-review-gate`（已推送，tag/Release 见仓库）
-- npm：`@ailunsin/dsh-review-gate@0.3.0`（已发布，latest）
+- npm：`@ailunsin/dsh-review-gate@0.3.1`（已发布，latest）
 - 索引：仓库根 `index.json`，格式按 DSH 官方 `plugin-market` 校验
 
 具体命令与当前状态见 `docs/release.md`。

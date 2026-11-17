@@ -1,4 +1,4 @@
-# 发布手册（dsh-review-gate 0.3.0）
+# 发布手册（dsh-review-gate 0.3.1）
 
 本文件记录三种发布形态（D4）的实际状态与命令。日期：2026-11-17。
 
@@ -6,22 +6,22 @@
 
 | 形态 | 状态 |
 |---|---|
-| GitHub 仓库 | 已推送 public 仓库 `https://github.com/AiLunSin/dsh-review-gate`；tag `v0.1.0` / `v0.2.0` / `v0.3.0` 已推送 |
-| GitHub Release | `v0.3.0` 已发布，附 `ailunsin-dsh-review-gate-0.3.0.tgz`（79,905 B） |
-| npm 包 | `@ailunsin/dsh-review-gate@0.3.0` 已发布（`latest=0.3.0`；31 files） |
-| CI | GitHub Actions 在已推送的 `main` 上通过（lint、单测、构建、索引结构校验；e2e 不在 CI） |
-| 自建索引 | `index.json` 已随 `main` 推送；`publishTimestamp=1794888519`（2026-11-17T04:08:39Z，npm 实际发布时间） |
-| 本地 Desktop profile | junction 到本地 `dist/ailunsin--dsh-review-gate`，用于开发验证，与 npm tarball 独立 |
+| GitHub 仓库 | 已推送 public 仓库 `https://github.com/AiLunSin/dsh-review-gate`；tag `v0.1.0` / `v0.2.0` / `v0.3.0` 已推送，`v0.3.1` 待推送 |
+| GitHub Release | `v0.3.0` 已发布；`v0.3.1` Release 待创建（npm 包已发布） |
+| npm 包 | `@ailunsin/dsh-review-gate@0.3.1` 已发布（`latest=0.3.1`；31 files） |
+| CI | GitHub Actions 在 `main` 93e99eb 上通过；v0.3.1 release 提交推送后会重跑 |
+| 自建索引 | `index.json` 含 0.3.1；`publishTimestamp=1794896317`（2026-11-17T06:18:37Z，npm 实际发布时间） |
+| 本地 Desktop profile | junction 到本地 `dist/ailunsin--dsh-review-gate`（0.3.1），用于开发验证，与 npm tarball 独立 |
 
 已确认的事实：
 
 - npm 无 scope 名称 `dsh-review-gate` **已被无关项目占用**（0.2.0，post-turn code review），因此发布名固定为 `@ailunsin/dsh-review-gate`。
-- `npm view @ailunsin/dsh-review-gate` 返回 `0.3.0`（latest）。
+- `npm view @ailunsin/dsh-review-gate` 返回 `0.3.1`（latest）；0.3.0 含 P2 handler 调用 bug，0.3.1 修复。
 - 本机 `npm whoami`：`ailunsin`。
 - 本机没有 `gh` CLI；仓库已通过 git 推送，维护不需要 `gh`。
-- 官方索引解析器校验通过：`plugins=1, versions=1`。
+- 官方索引解析器校验通过：`plugins=1, versions=2`。
 - 索引 raw URL 未能从本机网络验证（curl 返回 000）；上线前请在外部网络确认 `https://raw.githubusercontent.com/AiLunSin/dsh-review-gate/main/index.json` 200 直出且无重定向。
-- 本地 `main` 在 `origin/main` 之后有尚未推送的测试/修复提交；推送后 CI 会重跑。
+- 本地 `main` 当前与 `origin/main` 一致（93e99eb）；v0.3.1 tag 与 Release 仍需推送/创建。
 
 ## 1. 构建发布包
 
@@ -43,19 +43,19 @@ npm pack --dry-run --json        # 在 dist 目录内，确认文件清单
 ```powershell
 cd dist\ailunsin--dsh-review-gate
 npm pack
-# -> ailunsin-dsh-review-gate-0.3.0.tgz
+# -> ailunsin-dsh-review-gate-0.3.1.tgz
 ```
 
 已发布并验证：
 
-- npm `0.3.0` 已发布；GitHub Release 附 tarball（79,905 B）。
-- 发布 tarball 内 `REVIEW_UNITS_ROUTE` 为 `/api/review-gate.units`，不含 `src/review-gate-e2e/` 测试夹具。
+- npm `0.3.1` 已发布（`latest=0.3.1`；31 files）。
+- 发布 tarball 内 `REVIEW_UNITS_ROUTE` 为 `/api/review-gate.units`，`handleReviewRequest({ ctx, config, request })` 为修复版，不含 `src/review-gate-e2e/` 测试夹具。
 - 本地 `dist/` 可用 `npm run build:release` 重建；用 `npm pack --dry-run --json` 核对文件清单。
-- 本机 Desktop profile 的 0.3.0 是 junction 到本地 `dist/` 的开发安装；npm tarball 实装用 `dsh plugin add @ailunsin/dsh-review-gate@0.3.0` 验证。
+- 本机 Desktop profile 的 0.3.1 是 junction 到本地 `dist/` 的开发安装；npm tarball 实装用 `dsh plugin add @ailunsin/dsh-review-gate@0.3.1` 验证。
 
 ## 2. npm 发布（后续版本）
 
-0.3.0 已完成；以下命令用于下一个版本。
+0.3.1 已完成；以下命令用于下一个版本。
 
 ```powershell
 npm login
@@ -74,23 +74,23 @@ npm publish --access public --otp <6 位 OTP>
 或使用仓库内脚本（会先检查 dist 与登录态）：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\publish-npm.ps1 -Version 0.3.0
+powershell -ExecutionPolicy Bypass -File scripts\publish-npm.ps1 -Version 0.3.2
 ```
 
 发布后安装验证：
 
 ```powershell
 # 新临时 profile 或用户 profile
-dsh plugin add @ailunsin/dsh-review-gate@0.3.0
+dsh plugin add @ailunsin/dsh-review-gate@0.3.1
 ```
 
 ## 3. GitHub 发布
 
-仓库：`https://github.com/AiLunSin/dsh-review-gate`（已推送 `main` 与 tag）。0.3.0 已完成；下一个版本沿用：
+仓库：`https://github.com/AiLunSin/dsh-review-gate`（`main` 已推送）。0.3.1 的 npm 包已发布；tag 与 Release 待推送/创建：
 
 ```powershell
-git push origin main
 git tag v0.3.1
+git push origin main
 git push origin v0.3.1
 ```
 
@@ -114,7 +114,7 @@ https://raw.githubusercontent.com/AiLunSin/dsh-review-gate/main/index.json
 注意：
 
 - DSH 对索引 URL **严格按给定 URL 请求并拒绝重定向**；raw.githubusercontent.com 是 200 直出，可用。若用 GitHub Pages，请确认最终地址不跳转。
-- `versions[].publishTimestamp` 是 **Unix 秒**（不是 ISO 字符串）；0.3.0 已使用 npm 实际发布时间 `1794888519`，后续版本发布后同样更新并重新校验。
+- `versions[].publishTimestamp` 是 **Unix 秒**（不是 ISO 字符串）；0.3.1 已使用 npm 实际发布时间 `1794896317`，后续版本发布后同样更新并重新校验。
 - `icon` 是绝对 raw URL；索引解析器校验通过。
 - 发布前重新验证：
 
@@ -122,7 +122,7 @@ https://raw.githubusercontent.com/AiLunSin/dsh-review-gate/main/index.json
 node scripts\validate-market-index.mjs
 ```
 
-本机输出：`PASS official parser (plugins=1, versions=1)`。
+本机输出：`PASS official parser (plugins=1, versions=2)`。
 
 ## 5. 用户侧验证清单
 
