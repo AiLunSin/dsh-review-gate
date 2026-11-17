@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.3 — 2026-11-18
+
+- Review tab polish: the `error` state is left-aligned like `missing`, and the
+  file-open hint only renders in the ready state when at least one changed file
+  exists. `missing`/`error` state rendering and scroll reset are now testable
+  helpers, with coverage for both states and the empty-file ready state.
+- 141 tests.
+
 ## 0.3.2 — 2026-11-17
 
 - Review tab recovery: a persisted `review-gate/changes` projection can point at

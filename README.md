@@ -1,6 +1,6 @@
 # dsh-review-gate
 
-> **状态：P0 + P1 + P2 已实现（0.3.2）。** P0 通过真实 DSH `0.2.2-rc.3` headless 冒烟；P1 侧栏“审查顺序”页签已在当前 Desktop profile 注册；P2 增加导入图分组与决策提示（Host 认证路由 + 保守启发式）。发布名为 `@ailunsin/dsh-review-gate`（npm 上无 scope 的 `dsh-review-gate` 已被无关项目占用）。
+> **状态：P0 + P1 + P2 已实现（0.3.3）。** P0 通过真实 DSH `0.2.2-rc.3` headless 冒烟；P1 侧栏“审查顺序”页签已在当前 Desktop profile 注册；P2 增加导入图分组与决策提示（Host 认证路由 + 保守启发式）。发布名为 `@ailunsin/dsh-review-gate`（npm 上无 scope 的 `dsh-review-gate` 已被无关项目占用）。
 
 **给 DeepSeek Harness 加上"写入前的确定性边界"和"写入后的审查顺序"。**
 
@@ -180,7 +180,7 @@ dsh plugin add @ailunsin/dsh-review-gate@0.3.2
 ## 开发
 
 ```text
-node --test "test/*.test.js"   # 139 tests
+node --test "test/*.test.js"   # 141 tests
 node e2e/run.mjs               # 真实 DSH headless：never 策略 + fs 安全网
 node e2e/approval.mjs          # 真实 DSH headless：ask → 拒绝 / ask → 允许 + approval 审计
 node scripts/check-syntax.mjs

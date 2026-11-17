@@ -92,12 +92,34 @@ test('client: empty-state render consumes the documented props', () => {
   assert.match(JSON.stringify(tree), /emptyBody/)
 })
 
-test('client: missing state does not show the open-file hint', () => {
+test('client: open hint requires a ready state with files', () => {
   const { shouldShowOpenHint } = plugin.__test
-  assert.equal(shouldShowOpenHint('ready'), true)
+  assert.equal(shouldShowOpenHint('ready', [{ path: 'a.ts' }]), true)
+  assert.equal(shouldShowOpenHint('ready', []), false)
   for (const status of ['idle', 'empty', 'loading', 'missing', 'error']) {
-    assert.equal(shouldShowOpenHint(status), false, `${status} must not render the open hint`)
+    assert.equal(shouldShowOpenHint(status, [{ path: 'a.ts' }]), false, `${status} must not render the open hint`)
   }
+})
+
+test('client: missing and error states are left-aligned with actionable text', () => {
+  const { statusView } = plugin.__test
+  const t = (key, params) => params === undefined ? key : `${key}:${params.message}`
+  const missing = statusView('missing', t, '', () => {})
+  assert.equal(missing.props.className, 'rg-state rg-state-left')
+  assert.match(JSON.stringify(missing), /missingBody/)
+  const error = statusView('error', t, 'boom', () => {})
+  assert.equal(error.props.className, 'rg-state rg-state-left')
+  assert.match(JSON.stringify(error), /error:boom/)
+  assert.equal(statusView('loading', t, '', () => {}).props.className, 'rg-state')
+  assert.equal(statusView('ready', t, '', () => {}), null)
+})
+
+test('client: scroll reset is safe for empty and mounted bodies', () => {
+  const { resetBodyScroll } = plugin.__test
+  const ref = { current: { scrollTop: 42 } }
+  resetBodyScroll(ref)
+  assert.equal(ref.current.scrollTop, 0)
+  assert.doesNotThrow(() => resetBodyScroll({ current: null }))
 })
 
 test('client: apply registers the dictionary, tab type, and body', () => {

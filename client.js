@@ -288,9 +288,40 @@ window.__ModuleLoader__.load({
       return encodeURIComponent(value)
     }
 
-    /** @param {string} status @returns {boolean} */
-    function shouldShowOpenHint(status) {
-      return status === 'ready'
+    /** @param {string} status @returns {string} */
+    function statusClassName(status) {
+      return status === 'missing' || status === 'error' ? 'rg-state rg-state-left' : 'rg-state'
+    }
+
+    /** @param {{ current: { scrollTop: number } | null }} ref */
+    function resetBodyScroll(ref) {
+      if (ref.current !== null) ref.current.scrollTop = 0
+    }
+
+    /** @param {string} status @param {any[] | undefined} files @returns {boolean} */
+    function shouldShowOpenHint(status, files) {
+      return status === 'ready' && Array.isArray(files) && files.length > 0
+    }
+
+    /**
+     * @param {string} status
+     * @param {(key: string, params?: Record<string, string | number>) => string} t
+     * @param {string} error
+     * @param {() => void} retry
+     */
+    function statusView(status, t, error, retry) {
+      if (status === 'loading') return h('div', { className: statusClassName(status) }, t('loading'))
+      if (status === 'missing') {
+        return h('div', { className: statusClassName(status) },
+          h('div', { className: 'rg-state-title' }, t('missing')),
+          h('div', null, t('missingBody')))
+      }
+      if (status === 'error') {
+        return h('div', { className: statusClassName(status) },
+          h('div', { className: 'rg-state-title' }, t('error', { message: error })),
+          h('button', { type: 'button', className: 'rg-retry', onClick: retry }, t('retry')))
+      }
+      return null
     }
 
     /** @param {any} props */
@@ -308,7 +339,7 @@ window.__ModuleLoader__.load({
       const bodyRef = useRef(null)
 
       useEffect(() => {
-        if (bodyRef.current !== null) bodyRef.current.scrollTop = 0
+        resetBodyScroll(bodyRef)
       }, [seq, state.status])
 
       useEffect(() => {
@@ -436,14 +467,7 @@ window.__ModuleLoader__.load({
           onClick: () => setSelected(index),
         }, unitTitle(entry, t)))) : null
 
-      const statusNode = state.status === 'loading' ? h('div', { className: 'rg-state' }, t('loading'))
-        : state.status === 'missing' ? h('div', { className: 'rg-state rg-state-left' },
-          h('div', { className: 'rg-state-title' }, t('missing')),
-          h('div', null, t('missingBody')))
-          : state.status === 'error' ? h('div', { className: 'rg-state' },
-            h('div', { className: 'rg-state-title' }, t('error', { message: state.error })),
-            h('button', { type: 'button', className: 'rg-retry', onClick: () => setReload(value => value + 1) }, t('retry')))
-            : null
+      const statusNode = statusView(state.status, t, state.error, () => setReload(value => value + 1))
 
       const summaryLine = state.data === null ? null : h('div', { className: 'rg-muted' },
         t('files', { count: state.data.files.length }), ' · ',
@@ -477,7 +501,7 @@ window.__ModuleLoader__.load({
           decisionBlock,
           nav,
           openError === '' ? null : h('div', { className: 'rg-error' }, openError),
-          shouldShowOpenHint(state.status) ? h('div', { className: 'rg-hint' }, t('openHint')) : null))
+          shouldShowOpenHint(state.status, state.data?.files) ? h('div', { className: 'rg-hint' }, t('openHint')) : null))
     }
 
     return {
@@ -503,7 +527,7 @@ window.__ModuleLoader__.load({
           locale: NS,
         }, ReviewGateTab)), 'review-gate: tab body')
       },
-      __test: { buildUnits, isEntry, entryPatternRegex, translate, ReviewGateTab, shouldShowOpenHint },
+      __test: { buildUnits, isEntry, entryPatternRegex, translate, ReviewGateTab, shouldShowOpenHint, statusClassName, statusView, resetBodyScroll },
     }
   },
 })
