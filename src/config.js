@@ -72,6 +72,10 @@ export const DEFAULTS = Object.freeze({
       'docs/decisions',
       'docs/decisions.md',
     ]),
+    snapshot: Object.freeze({
+      enabled: true,
+      dir: '',
+    }),
   }),
 })
 
@@ -250,7 +254,7 @@ export function resolveConfig(raw) {
   }
 
   const reviewInput = section(input.review, 'review')
-  rejectUnknown(reviewInput, ['maxUnits', 'entryPatterns', 'importGraph', 'decisionSources'], 'review.')
+  rejectUnknown(reviewInput, ['maxUnits', 'entryPatterns', 'importGraph', 'decisionSources', 'snapshot'], 'review.')
   const entryPatterns = globArray(
     reviewInput.entryPatterns === undefined ? DEFAULTS.review.entryPatterns : reviewInput.entryPatterns,
     'review.entryPatterns',
@@ -271,11 +275,24 @@ export function resolveConfig(raw) {
     }
     if (source.length > 200) fail('review.decisionSources entries must be at most 200 characters')
   }
+  const snapshotInput = section(reviewInput.snapshot, 'review.snapshot')
+  rejectUnknown(snapshotInput, ['enabled', 'dir'], 'review.snapshot.')
+  const snapshotDir = snapshotInput.dir === undefined ? '' : snapshotInput.dir
+  if (typeof snapshotDir !== 'string') fail('review.snapshot.dir must be a string')
+  if (snapshotDir !== '' && !isAbsolutePath(snapshotDir)) {
+    fail('review.snapshot.dir must be empty (default) or an absolute path')
+  }
+  const snapshot = {
+    enabled: bool(snapshotInput.enabled, 'review.snapshot.enabled', DEFAULTS.review.snapshot.enabled),
+    dir: snapshotDir.trim(),
+  }
+
   const review = {
     maxUnits: integer(reviewInput.maxUnits, 'review.maxUnits', 1, 20, DEFAULTS.review.maxUnits),
     importGraph: bool(reviewInput.importGraph, 'review.importGraph', DEFAULTS.review.importGraph),
     entryPatterns,
     decisionSources,
+    snapshot,
   }
 
   return {

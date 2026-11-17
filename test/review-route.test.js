@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import fsp from 'node:fs/promises'
+import os from 'node:os'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { resolveConfig } from '../src/config.js'
 import { handleReviewRequest, registerReviewRoute, REVIEW_UNITS_ROUTE } from '../src/review-route.js'
+import { ChangeSnapshots } from '../src/snapshots.js'
 
 const cwd = path.resolve('/w')
 const abs = value => path.resolve(cwd, value)
@@ -147,4 +150,59 @@ test('review route: falls back to directory units without an fs service', async 
   assert.equal(payload.mode, 'directory')
   assert.equal(payload.units.length, 2)
   assert.deepEqual(payload.hints, [])
+})
+
+test('review route: serves a labelled snapshot after the Host forgets the turn', async () => {
+  const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'rg-route-snapshot-'))
+  try {
+    const snapshots = new ChangeSnapshots({ dir })
+    const config = resolveConfig({ review: { snapshot: { dir } } })
+    const fresh = await handleReviewRequest({
+      ctx: fakeContext({ files: {}, summary }),
+      config,
+      request: request(),
+      snapshots,
+    })
+    assert.equal(fresh.status, 200)
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      if (await snapshots.read('session-1', 5) !== undefined) break
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+
+    const restarted = await handleReviewRequest({
+      ctx: fakeContext({ summary: undefined }),
+      config,
+      request: request(),
+      snapshots,
+    })
+    assert.equal(restarted.status, 200)
+    assert.equal(restarted.headers.get('x-review-gate-snapshot'), '1')
+    const payload = await restarted.json()
+    assert.equal(payload.stale, true)
+    assert.equal(payload.mode, 'directory')
+    assert.equal(payload.turn, 2)
+    assert.equal(payload.files.length, 2)
+    assert.equal(payload.files[0].index, 0)
+    assert.equal(payload.units.length, 2)
+    assert.deepEqual(payload.hints, [])
+    assert.ok(payload.capturedAt.length > 0)
+
+    const captured = await snapshots.read('session-1', 5)
+    const raw = await fsp.readFile(snapshots.filePath('session-1', 5), 'utf8')
+    assert.ok(!raw.includes('hints'), 'snapshots must not persist decision hints')
+    assert.ok(!JSON.stringify(captured).includes('content'))
+  } finally {
+    await fsp.rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('review route: disabled snapshots still return 404 for a forgotten turn', async () => {
+  const config = resolveConfig({ review: { snapshot: { enabled: false } } })
+  const response = await handleReviewRequest({
+    ctx: fakeContext({ summary: undefined }),
+    config,
+    request: request(),
+    snapshots: new ChangeSnapshots({ dir: path.join(os.tmpdir(), `rg-disabled-${process.pid}`) }),
+  })
+  assert.equal(response.status, 404)
 })

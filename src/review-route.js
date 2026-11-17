@@ -17,6 +17,7 @@ import {
   removedLinesFromDiff,
 } from './decisions.js'
 import { buildImportEdges, buildReviewUnits } from './review-units.js'
+import { ChangeSnapshots, defaultSnapshotDir } from './snapshots.js'
 
 export const REVIEW_UNITS_ROUTE = '/api/review-gate.units'
 const MAX_READ_FILES = 40
@@ -27,18 +28,24 @@ const MAX_DIFF_FILES = 8
 /**
  * Register the route if the profile composes a browser-facing Connection.
  * @param {any} ctx
- * @param {{ review: { importGraph: boolean, decisionSources: string[], maxUnits: number, entryPatterns: string[] } }} config
+ * @param {{ review: { importGraph: boolean, decisionSources: string[], maxUnits: number, entryPatterns: string[], snapshot: { enabled: boolean, dir: string } } }} config
  */
 export function registerReviewRoute(ctx, config) {
   const connection = ctx.get?.('connection')
   if (connection === undefined || typeof connection.fetch?.register !== 'function') return
+  const snapshots = config.review?.snapshot?.enabled === false
+    ? undefined
+    : new ChangeSnapshots({
+      dir: config.review?.snapshot?.dir ? config.review.snapshot.dir : defaultSnapshotDir(),
+      logger: ctx.logger,
+    })
   let dispose
   try {
     dispose = connection.fetch.register({
       path: REVIEW_UNITS_ROUTE,
       methods: ['GET'],
       requestBody: 'buffered',
-      fetch: request => handleReviewRequest({ ctx, config, request }),
+      fetch: request => handleReviewRequest({ ctx, config, request, snapshots }),
     })
   } catch (error) {
     ctx.logger?.warn?.('[review-gate] review route unavailable:', error)
@@ -127,11 +134,13 @@ async function collectDecisionSource(fs, cwd, source, signal, out, depth = 0) {
  *   ctx: any,
  *   config: any,
  *   request: Request,
+ *   snapshots?: import('./snapshots.js').ChangeSnapshots,
  * }} options
  * @returns {Promise<Response>}
  */
 export async function handleReviewRequest(options) {
-  const { ctx, config, request } = options
+  const { ctx, config, request, snapshots: store } = options
+  const snapshots = config.review?.snapshot?.enabled === false ? undefined : store
   const url = new URL(request.url)
   const sessionId = url.searchParams.get('sessionId') ?? ''
   const seq = safeInteger(url.searchParams.get('seq'))
@@ -139,7 +148,27 @@ export async function handleReviewRequest(options) {
   const changes = ctx.get?.('workspaceChanges')
   if (changes === undefined || typeof changes.summary !== 'function') return new Response('Workspace changes unavailable.', { status: 503 })
   const summary = changes.summary(sessionId, seq)
-  if (summary === undefined) return new Response('Change summary unavailable.', { status: 404 })
+  if (summary === undefined) {
+    const snapshot = snapshots === undefined ? undefined : await snapshots.read(sessionId, seq)
+    if (snapshot === undefined) return new Response('Change summary unavailable.', { status: 404 })
+    const snapshotFiles = snapshot.files.map((file, index) => ({ ...file, index }))
+    return Response.json({
+      mode: 'directory',
+      turn: snapshot.turn,
+      total: snapshot.total,
+      added: snapshot.added,
+      deleted: snapshot.deleted,
+      files: snapshotFiles,
+      units: buildReviewUnits(snapshotFiles, {
+        maxUnits: config.review.maxUnits,
+        entryPatterns: config.review.entryPatterns,
+        edges: new Map(),
+      }),
+      hints: [],
+      stale: true,
+      capturedAt: snapshot.capturedAt,
+    }, { headers: { 'cache-control': 'no-store', 'x-review-gate-snapshot': '1' } })
+  }
   const signal = request.signal
   const cwd = typeof summary.cwd === 'string' && summary.cwd !== '' ? summary.cwd : process.cwd()
   const files = summary.files.map((file, index) => ({ ...file, path: file.path.replace(/\\/g, '/'), index }))
@@ -214,7 +243,7 @@ export async function handleReviewRequest(options) {
   }
   const hints = decisionHints({ decisions: decisionList, files, removedLines })
 
-  return Response.json({
+  const payload = {
     mode: edges.size > 0 ? 'graph' : 'directory',
     turn: summary.turn,
     total: summary.total,
@@ -223,5 +252,7 @@ export async function handleReviewRequest(options) {
     files,
     units,
     hints,
-  }, { headers: { 'cache-control': 'no-store' } })
+  }
+  if (snapshots !== undefined) void snapshots.capture(sessionId, seq, payload)
+  return Response.json(payload, { headers: { 'cache-control': 'no-store' } })
 }

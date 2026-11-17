@@ -32,7 +32,7 @@
 | 审批 UI | `ApprovalPanel` 用 `displayReason` 作标题 | 卡片 props 仅 `requestKey/title/callId/canAnswer/onAllow/onReject` | `dsh-client-ui-approval/src/client/ApprovalPanel.tsx:11-14` |
 | 单调守卫 | `ctx.tools.guard(fn)`，同步返回拒绝原因 | 只能 deny，不能 ask/allow；在 pre-execute 之后 | `dsh-tools/README.md:92`、`contracts.ts:402-418` |
 | fs 意图门 | `fs/write-intent` / `fs/edit-intent` / `fs/delete-intent`（waterfall）+ 抛 `FsError` 拒绝 | 只能 deny；只有解析后的 `target`，**无工具参数** | `dsh-fs/src/index.ts:58-94`、`dsh-fs-observation-policy/src/index.ts:78-97` |
-| 变更数据 | `workspace/changes` 事件（仅 `{turn}`）+ `ctx.workspaceChanges.summary()/diff()` | 仅 Host 进程内；子会话不记录；shell 写入在快照覆盖外会缺失 | `dsh-workspace-changes/README.md:12,44,48` |
+| 变更数据 | `workspace/changes` 事件（仅 `{turn}`）+ `ctx.workspaceChanges.summary()/diff()` | 仅 Host 进程内；子会话不记录；shell 写入在快照覆盖外会缺失；插件自 0.3.4 起把成功响应的元数据快照落盘，重启后以 `stale:true` 返回 | `dsh-workspace-changes/README.md:12,44,48` |
 | diff 渲染 | `dsh-resource://changes-review/session/<sid>/<seq>/<turn>`，`openResource(addr,{params:{index}})` | 内部地址，需版本适配 | `ui-deliverables/src/changes.ts:143-146`、`review-definition.ts:38-49` |
 | 命令 | `ctx.commands.register()`；`command/run` 落 `{commandId,name,args?,source}` | 命令结果不进模型上下文 | `dsh-commands/src/index.ts:373-378` |
 | 会话投影 | `ctx.sessionProjections.register({key,stateSchema,init,apply,stateVersion,wire?})` | `apply` 必须纯同步 | `dsh-session-projection/src/index.ts:83-133` |
@@ -455,6 +455,15 @@ function buildUnits(files: ChangedFile[], cfg: ReviewConfig): ReviewUnit[] {
 - **Client**：route 返回 `units`/`hints` 时直接渲染；顶部显示 `import graph`/`directory grouping`；决策提示按单元文件过滤展示；无 route 时静默回退。
 - **边界**：不跟包名 import、不做跨包图；不做 LLM 语义判断；决策文本可能很长，响应只带首个命中标识符的决策，不返回代码正文。
 - **测试**：`review-units`（导入/TS .js→.ts/Python/合并/目录回退）、`decisions`（ADR/指令/注释/删除行）、`review-route`（认证 handler 形状、hints、降级）与 plugin route 注册。
+
+### 9.3.1 重启后的快照（v0.3.4）
+
+- **问题**：`workspaceChanges.summary()` 只活在 Host 进程内，DSH 重启后持久化的 `review-gate/changes` 投影仍指向旧 `seq`，路由与 `/api/changes.summary` 都返回 404。0.3.3 的处理是回到空态。
+- **做法**：每次路由成功返回改动清单后，把 `turn/total/added/deleted/files[{path,display,added,deleted,binary?,oversized?}]` 以原子写落盘到 `review.snapshot.dir`（默认 `$DSH_HOME/review-gate/snapshots`，文件名 `<sha256(sessionId) 前 16 位>-<seq 补零>.json`，保留最近 20 份）。404 时读回快照，用目录分组重建 `units`，响应带 `stale:true` 与 `capturedAt`，`hints` 为空，并附 `x-review-gate-snapshot: 1`。
+- **不存什么**：不存文件正文、diff、决策提示文本、`cwd`；只存渲染所需的路径与计数，保证「不存正文」约束不被快照破坏。
+- **Client**：`stale` 时显示「Host 已重启，显示 {time} 的上一轮快照」提示，文件行改为不可点击，隐藏「点击文件…」提示；正常轮次行为不变。
+- **代价**：只在打开过页签、成功取到一次清单后才有快照；快照不反映之后的工作区变化，因此必须显式标注为快照且禁止打开文件。
+- **关闭**：`review.snapshot.enabled: false` 恢复 0.3.3 的空态行为。
 
 ### 9.4 侧栏页签（实际）
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.4 — 2026-11-18
+
+- After a DSH restart, a persisted `review-gate/changes` projection now resolves
+  to a body-free snapshot of the last successful change summary instead of the
+  empty state. The tab shows the file list and counts, labels it with the
+  capture time ("Host restarted…"), makes file rows non-clickable, and hides the
+  file-open hint, so old data is never presented as the current turn.
+- Snapshots live in `$DSH_HOME/review-gate/snapshots` (newest 20 turns) and store
+  paths, counts, and binary/oversized flags only — never file contents, diffs, or
+  decision-hint text. `review.snapshot.dir` overrides the directory;
+  `review.snapshot.enabled: false` restores the 0.3.3 empty-state behavior.
+- 150 tests.
+
 ## 0.3.3 — 2026-11-18
 
 - Review tab polish: the `error` state is left-aligned like `missing`, and the

@@ -129,6 +129,14 @@ test('client: a missing Host summary resets to the empty state', () => {
   assert.equal(failureStatus(undefined), 'error')
 })
 
+test('client: a stale snapshot hides the open hint and is labelled', () => {
+  const { shouldShowOpenHint, formatSnapshotTime } = plugin.__test
+  assert.equal(shouldShowOpenHint('ready', [{ path: 'a.ts' }], false), true)
+  assert.equal(shouldShowOpenHint('ready', [{ path: 'a.ts' }], true), false)
+  assert.equal(formatSnapshotTime('not-a-date'), '—')
+  assert.notEqual(formatSnapshotTime('2026-11-18T00:00:00.000Z'), '—')
+})
+
 test('client: apply registers the dictionary, tab type, and body', () => {
   const dictionaries = []
   const types = []
@@ -171,6 +179,8 @@ test('client: apply registers the dictionary, tab type, and body', () => {
   assert.equal(dictionaries[0].ns, 'reviewGate')
   assert.equal(dictionaries[0].dict.en.missingBody, 'Run a new turn that writes files to refresh this tab.')
   assert.equal(dictionaries[0].dict.zh.missingBody, '请跑一轮新的、会写文件的对话以刷新本页签。')
+  assert.match(dictionaries[0].dict.en.staleNotice, /\{time\}/)
+  assert.match(dictionaries[0].dict.zh.staleNotice, /\{time\}/)
   assert.equal(types.length, 1)
   assert.equal(types[0].id, '@ailunsin/dsh-review-gate')
   assert.equal(types[0].kind, 'review-gate')

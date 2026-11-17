@@ -19,6 +19,7 @@ window.__ModuleLoader__.load({
       loading: 'Loading changes…',
       missing: 'The Host no longer serves this turn\'s changes.',
       missingBody: 'Run a new turn that writes files to refresh this tab.',
+      staleNotice: 'The Host restarted. Showing the snapshot from {time}; file contents were not re-read.',
       error: 'Could not load changes: {message}',
       retry: 'Retry',
       turn: 'Turn {turn}',
@@ -56,6 +57,7 @@ window.__ModuleLoader__.load({
       loading: '正在加载改动…',
       missing: 'Host 已不再提供本轮的改动数据。',
       missingBody: '请跑一轮新的、会写文件的对话以刷新本页签。',
+      staleNotice: 'Host 已重启，显示 {time} 的上一轮快照；文件内容未重新读取。',
       error: '加载改动失败：{message}',
       retry: '重试',
       turn: '第 {turn} 轮',
@@ -114,6 +116,9 @@ window.__ModuleLoader__.load({
 .rg-nav button, .rg-retry { appearance: none; border: 1px solid var(--dsw-alias-border-l2); background: transparent; color: var(--dsw-alias-label-primary); border-radius: 8px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
 .rg-nav button:disabled { opacity: 0.45; cursor: default; }
 .rg-hint { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.rg-snapshot { padding: 8px 12px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 10px; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 1.45; text-align: left; overflow-wrap: anywhere; }
+.rg-file-static { cursor: default; }
+.rg-file-static:hover { background: transparent; }
 .rg-error { color: var(--dsw-alias-state-error-primary); overflow-wrap: anywhere; }
 .rg-warn { color: var(--dsw-alias-state-warn-primary); }
 .rg-section-title { font-weight: 600; font-size: 12px; color: var(--dsw-alias-state-warn-primary); margin-bottom: 2px; }
@@ -303,9 +308,15 @@ window.__ModuleLoader__.load({
       if (ref.current !== null) ref.current.scrollTop = 0
     }
 
-    /** @param {string} status @param {any[] | undefined} files @returns {boolean} */
-    function shouldShowOpenHint(status, files) {
-      return status === 'ready' && Array.isArray(files) && files.length > 0
+    /** @param {string} status @param {any[] | undefined} files @param {boolean} [stale] @returns {boolean} */
+    function shouldShowOpenHint(status, files, stale) {
+      return status === 'ready' && stale !== true && Array.isArray(files) && files.length > 0
+    }
+
+    /** @param {string} value @returns {string} */
+    function formatSnapshotTime(value) {
+      const date = new Date(value)
+      return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString()
     }
 
     /**
@@ -400,6 +411,7 @@ window.__ModuleLoader__.load({
       }, [sessionId, seq, reload])
 
       const files = state.data?.files ?? []
+      const stale = state.data?.stale === true
       const serverUnits = Array.isArray(state.data?.units) ? state.data.units : null
       const units = useMemo(
         () => serverUnits ?? buildUnits(files, { maxUnits: meta.maxUnits, entryPatterns: meta.entryPatterns }),
@@ -447,17 +459,20 @@ window.__ModuleLoader__.load({
         h('div', { className: 'rg-why' }, reasonText(unit, t)),
         units.length > 1 ? h('div', { className: 'rg-muted' }, t('unit', { index: selected + 1, count: units.length })) : null)
 
-      const fileItems = unit === undefined ? [] : unit.files.map((file) => h('li', { key: file.path },
-        h('button', {
-          type: 'button',
-          className: 'rg-file',
-          title: file.display ?? file.path,
-          onClick: () => openFile(file),
-        },
-        h('span', { className: 'rg-path' }, file.display ?? file.path),
-        h('span', { className: 'rg-counts' },
+      const fileItems = unit === undefined ? [] : unit.files.map((file) => {
+        const label = h('span', { className: 'rg-path' }, file.display ?? file.path)
+        const counts = h('span', { className: 'rg-counts' },
           h('span', { className: 'rg-add' }, t('added', { count: file.added })),
-          h('span', { className: 'rg-del' }, t('deleted', { count: file.deleted }))))))
+          h('span', { className: 'rg-del' }, t('deleted', { count: file.deleted })))
+        return h('li', { key: file.path }, stale
+          ? h('span', { className: 'rg-file rg-file-static', title: file.display ?? file.path }, label, counts)
+          : h('button', {
+            type: 'button',
+            className: 'rg-file',
+            title: file.display ?? file.path,
+            onClick: () => openFile(file),
+          }, label, counts))
+      })
 
       const card = unit === undefined ? null : h('div', { className: 'rg-card' },
         cardHead,
@@ -474,6 +489,9 @@ window.__ModuleLoader__.load({
         }, unitTitle(entry, t)))) : null
 
       const statusNode = statusView(state.status, t, state.error, () => setReload(value => value + 1))
+      const snapshotNotice = stale
+        ? h('div', { className: 'rg-snapshot' }, t('staleNotice', { time: formatSnapshotTime(state.data.capturedAt) }))
+        : null
 
       const summaryLine = state.data === null ? null : h('div', { className: 'rg-muted' },
         t('files', { count: state.data.files.length }), ' · ',
@@ -501,13 +519,14 @@ window.__ModuleLoader__.load({
           h('div', { className: 'rg-muted rg-scope' }, t('scope', { scope: scopeText }))),
         h('div', { className: 'rg-body', ref: bodyRef },
           statusNode,
+          snapshotNotice,
           summaryLine,
           chips,
           card,
           decisionBlock,
           nav,
           openError === '' ? null : h('div', { className: 'rg-error' }, openError),
-          shouldShowOpenHint(state.status, state.data?.files) ? h('div', { className: 'rg-hint' }, t('openHint')) : null))
+          shouldShowOpenHint(state.status, state.data?.files, stale) ? h('div', { className: 'rg-hint' }, t('openHint')) : null))
     }
 
     return {
@@ -533,7 +552,7 @@ window.__ModuleLoader__.load({
           locale: NS,
         }, ReviewGateTab)), 'review-gate: tab body')
       },
-      __test: { buildUnits, isEntry, entryPatternRegex, translate, ReviewGateTab, shouldShowOpenHint, statusClassName, statusView, resetBodyScroll, failureStatus },
+      __test: { buildUnits, isEntry, entryPatternRegex, translate, ReviewGateTab, shouldShowOpenHint, statusClassName, statusView, resetBodyScroll, failureStatus, formatSnapshotTime },
     }
   },
 })

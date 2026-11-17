@@ -128,6 +128,9 @@ dsh plugin add @ailunsin/dsh-review-gate@0.3.2
         - '**/cli.*'
         - '**/__init__.py'
         - '**/mod.*'
+      snapshot:                  # 0.3.4+：重启后仍显示上一轮文件清单（仅元数据）
+        enabled: true
+        dir: ''                  # 空 = $DSH_HOME/review-gate/snapshots
 ```
 
 未知字段、非法枚举、非法 glob 在插件激活时**直接报错**，不会静默忽略。
@@ -157,6 +160,10 @@ dsh plugin add @ailunsin/dsh-review-gate@0.3.2
 - 只存路径、规则 ID、行号、短哈希、决策和耗时；**不存文件正文、`old_string`、diff**。
 - 审批实际结果另记一行 `type:"approval"`（`outcome=allowed-once|rejected|cancelled|unavailable`）。
 - 队列写盘，写失败只告警一次，不影响工具调用；`audit.enabled=false` 完全关闭。
+
+### 审查快照（0.3.4+）
+
+页签成功取到一次改动清单后，会把 `turn/total/added/deleted/files[path,display,added,deleted,binary?,oversized?]` 写到 `$DSH_HOME/review-gate/snapshots`（原子写，保留最近 20 份，文件名是会话哈希 + 补零 seq）。DSH 重启后路由 404 时读回快照，响应带 `stale:true` 与 `capturedAt`；页签显示「Host 已重启，显示 … 的上一轮快照」、文件行不可点击、隐藏打开提示。**不存文件正文、diff、决策提示文本或 `cwd`**；`review.snapshot.enabled=false` 关闭，恢复空态。
 
 ## 已知限制（请先读）
 

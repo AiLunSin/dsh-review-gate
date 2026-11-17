@@ -97,6 +97,18 @@ test('config: review import graph and decision sources are validated', () => {
   assert.throws(() => resolveConfig({ review: { decisionSources: ['/abs/path'] } }), /review.decisionSources/)
 })
 
+test('config: review snapshots are validated', () => {
+  assert.deepEqual(resolveConfig({}).review.snapshot, { enabled: true, dir: '' })
+  const disabled = resolveConfig({ review: { snapshot: { enabled: false } } })
+  assert.equal(disabled.review.snapshot.enabled, false)
+  const custom = resolveConfig({ review: { snapshot: { dir: 'C:\\tmp\\review-gate' } } })
+  assert.equal(custom.review.snapshot.dir, 'C:\\tmp\\review-gate')
+  assert.throws(() => resolveConfig({ review: { snapshot: { dir: 'relative/path' } } }), /review.snapshot.dir/)
+  assert.throws(() => resolveConfig({ review: { snapshot: { dir: 42 } } }), /review.snapshot.dir/)
+  assert.throws(() => resolveConfig({ review: { snapshot: { enabled: 'yes' } } }), /review.snapshot.enabled/)
+  assert.throws(() => resolveConfig({ review: { snapshot: { nope: true } } }), /unknown key "review.snapshot.nope"/)
+})
+
 test('config: explicit empty arrays are preserved', () => {
   const config = resolveConfig({ scope: { default: [] }, rules: { ignorePaths: [] }, protectedPaths: [] })
   assert.deepEqual(config.scope.default, [])
