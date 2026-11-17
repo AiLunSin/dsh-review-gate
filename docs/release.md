@@ -1,29 +1,29 @@
-# 发布手册（dsh-review-gate 0.3.4）
+# 发布手册（dsh-review-gate 0.3.5）
 
-本文件记录三种发布形态（D4）的实际状态与命令。日期：2026-11-17（0.3.4 于 2026-11-17T16:52:00.752Z 发布）。
+本文件记录三种发布形态（D4）的实际状态与命令。日期：2026-11-17（0.3.5 于 2026-11-17T17:11:43.649Z 发布）。
 
 ## 0. 当前状态
 
 | 形态 | 状态 |
 |---|---|
-| GitHub 仓库 | 已推送 public 仓库 `https://github.com/AiLunSin/dsh-review-gate`；tag `v0.1.0` / `v0.2.0` / `v0.3.0` / `v0.3.1` / `v0.3.2` / `v0.3.3` / `v0.3.4` 已推送 |
-| GitHub Release | `v0.3.0` / `v0.3.1` / `v0.3.2` / `v0.3.3` / `v0.3.4` 已发布；[v0.3.4](https://github.com/AiLunSin/dsh-review-gate/releases/tag/v0.3.4) 附 `ailunsin-dsh-review-gate-0.3.4.tgz`（33 files，88,424 B） |
-| npm 包 | `@ailunsin/dsh-review-gate@0.3.4` 已发布（`latest=0.3.4`；33 files；88,424 B）；0.3.3 于 2026-11-17T16:44:36Z 发布 |
-| CI | GitHub Actions 在 `main` 8379b02 上通过：`ci` success；`index-reachability` [run 44131086045](https://github.com/AiLunSin/dsh-review-gate/actions/runs/44131086045) PASS |
-| 自建索引 | `index.json` 含 0.3.4；`publishTimestamp=1794934320`（2026-11-17T16:52:00.752Z，npm 实际发布时间） |
-| 本地 Desktop profile | 已安装 npm `0.3.4`（`dsh plugin --profile desktop add @ailunsin/dsh-review-gate@0.3.4`，`dependencies` 已确认为 0.3.4；重启 DSH 生效） |
+| GitHub 仓库 | 已推送 public 仓库 `https://github.com/AiLunSin/dsh-review-gate`；tag `v0.1.0` / `v0.2.0` / `v0.3.0` / `v0.3.1` / `v0.3.2` / `v0.3.3` / `v0.3.4` / `v0.3.5` 已推送 |
+| GitHub Release | `v0.3.0` / `v0.3.1` / `v0.3.2` / `v0.3.3` / `v0.3.4` / `v0.3.5` 已发布；[v0.3.5](https://github.com/AiLunSin/dsh-review-gate/releases/tag/v0.3.5) 附 `ailunsin-dsh-review-gate-0.3.5.tgz`（33 files，88,458 B） |
+| npm 包 | `@ailunsin/dsh-review-gate@0.3.5` 已发布（`latest=0.3.5`；33 files；88,458 B）；0.3.4 于 2026-11-17T16:52:00.752Z 发布 |
+| CI | GitHub Actions 在 `main` 8379b02 上通过：`ci` success；`index-reachability` [run 44131086045](https://github.com/AiLunSin/dsh-review-gate/actions/runs/44131086045) PASS；0.3.5 收尾提交由同一工作流覆盖 |
+| 自建索引 | `index.json` 含 0.3.5；`publishTimestamp=1794935503`（2026-11-17T17:11:43.649Z，npm 实际发布时间） |
+| 本地 Desktop profile | 已安装 npm `0.3.5`（`dsh plugin --profile desktop add @ailunsin/dsh-review-gate@0.3.5`，`dependencies` 已确认为 0.3.5；重启 DSH 生效） |
 
 已确认的事实：
 
 - npm 无 scope 名称 `dsh-review-gate` **已被无关项目占用**（0.2.0，post-turn code review），因此发布名固定为 `@ailunsin/dsh-review-gate`。
-- `npm view @ailunsin/dsh-review-gate` 返回 `0.3.4`（latest）；0.3.0 含 P2 handler 调用 bug，0.3.1 修复；0.3.2 修复重启后 stale review 投影的 missing 状态；0.3.3 整理页签状态渲染；0.3.4 增加重启后的无正文快照。
+- `npm view @ailunsin/dsh-review-gate` 返回 `0.3.5`（latest）；0.3.0 含 P2 handler 调用 bug，0.3.1 修复；0.3.2 修复重启后 stale review 投影的 missing 状态；0.3.3 整理页签状态渲染；0.3.4 增加重启后的无正文快照；0.3.5 修复快照 `prune` 误删自定义目录无关 JSON。
 - 本机 `npm whoami`：`ailunsin`。
 - 本机没有 `gh` CLI；仓库已通过 git 推送，维护不需要 `gh`。
-- 官方索引解析器校验通过：`plugins=1, versions=5`。
+- 官方索引解析器校验通过：`plugins=1, versions=6`。
 - 索引 raw URL 已由 GitHub Actions runner 验证（0.3.4 内容）：[index-reachability run 44131086045](https://github.com/AiLunSin/dsh-review-gate/actions/runs/44131086045) PASS：200 直出、无重定向，内容与仓库一致。本机到 raw 域名仍超时，这是本地链路问题。
-- `v0.3.4` tag 指向提交 `8379b02`（功能提交 `cc7aa2b`）；tag 与 GitHub Release 已完成，Release 附件 `ailunsin-dsh-review-gate-0.3.4.tgz` 为 33 files、88,424 B。
+- `v0.3.5` tag 指向 0.3.5 索引提交（`chore: record the 0.3.5 publish timestamp`）；tag 与 GitHub Release 已完成，Release 附件 `ailunsin-dsh-review-gate-0.3.5.tgz` 为 33 files、88,458 B；npm 于 2026-11-17T17:11:43.649Z 发布，`publishTimestamp=1794935503`。
+- `v0.3.4` tag 指向 `8379b02`（功能提交 `cc7aa2b`）；tag 与 GitHub Release 已完成，Release 附件为 33 files、88,424 B；npm 于 2026-11-17T16:52:00.752Z 发布，`publishTimestamp=1794934320`。
 - `v0.3.3` tag 指向提交 `b78c535`，npm 于 2026-11-17T16:44:36Z 发布，`index.json` 的 `publishTimestamp=1794933876`。
-- `0.3.5` **尚未发布**；本地已修复 prune 并构建 dist，详见第 7 节。
 
 ## 1. 构建发布包
 
@@ -50,14 +50,14 @@ npm pack
 
 已发布并验证：
 
-- npm `0.3.4` 已发布（`latest=0.3.4`；33 files；88,424 B）。
+- npm `0.3.5` 已发布（`latest=0.3.5`；33 files；88,458 B）。
 - 用 `npm pack --dry-run --json` 核对 tarball 文件清单；发布包不含 `src/review-gate-e2e/` 测试夹具。
 - 本地 `dist/` 可用 `npm run build:release` 重建。
-- npm tarball 实装曾在全新 headless profile 验证（0.3.1）；Desktop profile 已升级到 npm `0.3.4`，重启后生效。
+- npm tarball 实装曾在全新 headless profile 验证（0.3.1）；Desktop profile 已升级到 npm `0.3.5`，重启后生效。
 
 ## 2. npm 发布（后续版本）
 
-0.3.4 已完成；以下命令用于下一个版本（0.3.5，尚未发布）。
+0.3.5 已完成；以下命令用于下一个版本（0.3.6，尚未发布）。
 
 ```powershell
 npm login
@@ -140,21 +140,17 @@ node scripts\validate-market-index.mjs
 - 每次 DSH 发版后先跑 `node e2e/run.mjs`，再同步 `engines.dsh`（当前精确锁定 `0.2.2-rc.3`）。
 - 契约字段变更必须发 minor 并更新 README/限制；只改规则/文档可发 patch。
 
-## 7. 0.3.5（待发布）
+## 7. 0.3.5（已发布）
 
-> **状态：尚未发布。** 0.3.5 只在本地完成修复、构建与验证；npm、GitHub tag/Release 与 `index.json` 均未更新。
+> **状态：已发布。** npm `latest=0.3.5`；tag、Release、`index.json` 均已完成。
 
 - **修复**：`prune` 原先按任意 `.json` 筛选，并在超过 20 个时删除最旧文件；当 `review.snapshot.dir` 指向共享/项目目录时，可能误删无关 JSON。现在只匹配文件名 `^[0-9a-f]{16}-\d{10}\.json$` 的快照文件，其它文件不计入上限、也不会被删除。
 - **提交**：`b1c3e80 fix: prune only review-gate snapshot files`。
-- **测试/构建**：`151/151` tests pass；本地已构建 dist 0.3.5；`npm run smoke:install` PASS。
-- **发布命令**：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\publish-npm.ps1 -Version 0.3.5
-```
-
-- **发布后待办**：
-  1. 记录 npm 实际发布时间，并把 `index.json` 的 `versions[].publishTimestamp` 更新为 Unix 秒；
-  2. 推送 tag `v0.3.5`；
-  3. 创建 GitHub Release 并上传 `ailunsin-dsh-review-gate-0.3.5.tgz`；
-  4. 升级本地 Desktop profile 到 0.3.5 并记录验证结果。
+- **测试/构建**：`151/151` tests pass；dist 0.3.5 已构建；`npm run smoke:install` PASS。
+- **发布结果**：
+  1. npm `0.3.5` 于 2026-11-17T17:11:43.649Z 发布（33 files，88,458 B）；
+  2. `index.json` 的 `publishTimestamp=1794935503`，官方解析器 PASS（versions=6）；
+  3. tag `v0.3.5` 已推送；
+  4. GitHub Release 已创建并上传 `ailunsin-dsh-review-gate-0.3.5.tgz`；
+  5. Desktop profile 已升级到 npm `0.3.5`（重启 DSH 生效）。
+- **遗留**：真实 DSH 重启后的快照 UI 观感仍需实机采集（见 `docs/verification-0.3.1.md`）。
