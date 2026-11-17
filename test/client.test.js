@@ -92,6 +92,14 @@ test('client: empty-state render consumes the documented props', () => {
   assert.match(JSON.stringify(tree), /emptyBody/)
 })
 
+test('client: missing state does not show the open-file hint', () => {
+  const { shouldShowOpenHint } = plugin.__test
+  assert.equal(shouldShowOpenHint('ready'), true)
+  for (const status of ['idle', 'empty', 'loading', 'missing', 'error']) {
+    assert.equal(shouldShowOpenHint(status), false, `${status} must not render the open hint`)
+  }
+})
+
 test('client: apply registers the dictionary, tab type, and body', () => {
   const dictionaries = []
   const types = []
@@ -132,6 +140,8 @@ test('client: apply registers the dictionary, tab type, and body', () => {
   plugin.apply(ctx)
   assert.equal(dictionaries.length, 1)
   assert.equal(dictionaries[0].ns, 'reviewGate')
+  assert.equal(dictionaries[0].dict.en.missingBody, 'Run a new turn that writes files to refresh this tab.')
+  assert.equal(dictionaries[0].dict.zh.missingBody, '请跑一轮新的、会写文件的对话以刷新本页签。')
   assert.equal(types.length, 1)
   assert.equal(types[0].id, '@ailunsin/dsh-review-gate')
   assert.equal(types[0].kind, 'review-gate')

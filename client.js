@@ -3,7 +3,7 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react')
     const h = React.createElement
-    const { useEffect, useMemo, useState } = React
+    const { useEffect, useMemo, useRef, useState } = React
 
     const NS = 'reviewGate'
     const ID = '@ailunsin/dsh-review-gate'
@@ -18,6 +18,7 @@ window.__ModuleLoader__.load({
       emptyBody: 'Run a turn that writes files, then open this tab again.',
       loading: 'Loading changes…',
       missing: 'The Host no longer serves this turn\'s changes.',
+      missingBody: 'Run a new turn that writes files to refresh this tab.',
       error: 'Could not load changes: {message}',
       retry: 'Retry',
       turn: 'Turn {turn}',
@@ -54,6 +55,7 @@ window.__ModuleLoader__.load({
       emptyBody: '先跑一轮会写文件的对话，再打开这个页签。',
       loading: '正在加载改动…',
       missing: 'Host 已不再提供本轮的改动数据。',
+      missingBody: '请跑一轮新的、会写文件的对话以刷新本页签。',
       error: '加载改动失败：{message}',
       retry: '重试',
       turn: '第 {turn} 轮',
@@ -83,14 +85,15 @@ window.__ModuleLoader__.load({
     }
 
     const CSS = `
-.rg-root { display: flex; flex-direction: column; height: 100%; min-height: 0; color: var(--dsw-alias-label-primary); font-size: 13px; }
+.rg-root { display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; max-width: 100%; box-sizing: border-box; color: var(--dsw-alias-label-primary); font-size: 13px; }
 .rg-head { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px 10px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
 .rg-title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .rg-title { font-size: 14px; font-weight: 600; }
 .rg-muted { color: var(--dsw-alias-label-secondary); font-size: 12px; }
 .rg-scope { overflow-wrap: anywhere; }
-.rg-body { flex: 1; min-height: 0; overflow: auto; padding: 10px 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+.rg-body { flex: 1; min-height: 0; overflow: auto; padding: 10px 14px 18px; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box; max-width: 100%; }
 .rg-state { padding: 24px 10px; color: var(--dsw-alias-label-secondary); text-align: center; line-height: 1.55; }
+.rg-state-left { text-align: left; }
 .rg-state-title { color: var(--dsw-alias-label-primary); font-weight: 600; margin-bottom: 4px; }
 .rg-units { display: flex; flex-wrap: wrap; gap: 6px; }
 .rg-chip { appearance: none; border: 1px solid var(--dsw-alias-border-l1); background: transparent; color: var(--dsw-alias-label-secondary); border-radius: 999px; padding: 3px 9px; font: inherit; font-size: 12px; cursor: pointer; }
@@ -110,7 +113,7 @@ window.__ModuleLoader__.load({
 .rg-nav { display: flex; justify-content: space-between; gap: 8px; }
 .rg-nav button, .rg-retry { appearance: none; border: 1px solid var(--dsw-alias-border-l2); background: transparent; color: var(--dsw-alias-label-primary); border-radius: 8px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
 .rg-nav button:disabled { opacity: 0.45; cursor: default; }
-.rg-hint { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 1.45; }
+.rg-hint { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
 .rg-error { color: var(--dsw-alias-state-error-primary); overflow-wrap: anywhere; }
 .rg-warn { color: var(--dsw-alias-state-warn-primary); }
 .rg-section-title { font-weight: 600; font-size: 12px; color: var(--dsw-alias-state-warn-primary); margin-bottom: 2px; }
@@ -285,6 +288,11 @@ window.__ModuleLoader__.load({
       return encodeURIComponent(value)
     }
 
+    /** @param {string} status @returns {boolean} */
+    function shouldShowOpenHint(status) {
+      return status === 'ready'
+    }
+
     /** @param {any} props */
     function ReviewGateTab(props) {
       const { sessionId, useProjection, useTabInfo } = props
@@ -297,6 +305,11 @@ window.__ModuleLoader__.load({
       const [reload, setReload] = useState(0)
       const [openError, setOpenError] = useState('')
       const seq = changes.seq
+      const bodyRef = useRef(null)
+
+      useEffect(() => {
+        if (bodyRef.current !== null) bodyRef.current.scrollTop = 0
+      }, [seq, state.status])
 
       useEffect(() => {
         if (!seq) {
@@ -424,8 +437,9 @@ window.__ModuleLoader__.load({
         }, unitTitle(entry, t)))) : null
 
       const statusNode = state.status === 'loading' ? h('div', { className: 'rg-state' }, t('loading'))
-        : state.status === 'missing' ? h('div', { className: 'rg-state' },
-          h('div', { className: 'rg-state-title' }, t('missing')))
+        : state.status === 'missing' ? h('div', { className: 'rg-state rg-state-left' },
+          h('div', { className: 'rg-state-title' }, t('missing')),
+          h('div', null, t('missingBody')))
           : state.status === 'error' ? h('div', { className: 'rg-state' },
             h('div', { className: 'rg-state-title' }, t('error', { message: state.error })),
             h('button', { type: 'button', className: 'rg-retry', onClick: () => setReload(value => value + 1) }, t('retry')))
@@ -455,7 +469,7 @@ window.__ModuleLoader__.load({
             h('div', { className: 'rg-title' }, t('title')),
             h('div', { className: 'rg-muted' }, t('turn', { turn: state.data?.turn ?? changes.turn }))),
           h('div', { className: 'rg-muted rg-scope' }, t('scope', { scope: scopeText }))),
-        h('div', { className: 'rg-body' },
+        h('div', { className: 'rg-body', ref: bodyRef },
           statusNode,
           summaryLine,
           chips,
@@ -463,7 +477,7 @@ window.__ModuleLoader__.load({
           decisionBlock,
           nav,
           openError === '' ? null : h('div', { className: 'rg-error' }, openError),
-          h('div', { className: 'rg-hint' }, t('openHint'))))
+          shouldShowOpenHint(state.status) ? h('div', { className: 'rg-hint' }, t('openHint')) : null))
     }
 
     return {
@@ -489,7 +503,7 @@ window.__ModuleLoader__.load({
           locale: NS,
         }, ReviewGateTab)), 'review-gate: tab body')
       },
-      __test: { buildUnits, isEntry, entryPatternRegex, translate, ReviewGateTab },
+      __test: { buildUnits, isEntry, entryPatternRegex, translate, ReviewGateTab, shouldShowOpenHint },
     }
   },
 })

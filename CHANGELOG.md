@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.2 — 2026-11-17
+
+- Review tab recovery: a persisted `review-gate/changes` projection can point at
+  a turn from before a DSH restart, which the Host no longer serves. That state
+  now renders a clear missing-state message and recovery hint instead of the
+  misleading file-open hint; the body resets its scroll and the message is
+  left-aligned for narrow panels. The open hint renders only in the ready state.
+- 139 tests.
+
 ## 0.3.1 — 2026-11-17
 
 - Fix the P2 authenticated review route: the registered Fetch callback passed
