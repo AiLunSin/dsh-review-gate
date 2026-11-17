@@ -77,4 +77,4 @@ B5 视觉由 B12 的第 19/21 轮实际页签覆盖（导入图分组、目录�
 - **修复**：`prune` 只匹配文件名 `^[0-9a-f]{16}-\d{10}\.json$` 的快照文件；`review.snapshot.dir` 指向共享目录时不再误删无关 JSON。新增测试断言 `keep.json` / `package.json` / 非补零命名文件不被删除。
 - **提交**：`b1c3e80 fix: prune only review-gate snapshot files`。
 - **测试/构建**：`151/151` pass；dist 0.3.5 已构建；`npm run smoke:install` PASS。
-- **发布**：npm `0.3.5` 于 2026-11-17T17:11:43.649Z 发布（33 files，88,458 B）；`index.json` 的 `publishTimestamp=1794935503`，官方解析器 PASS（versions=6）；tag `v0.3.5` 与 GitHub Release 已完成；Desktop profile 已升级到 npm 0.3.5。
+- **发布**：npm `0.3.5` 于 2026-11-17T17:11:43.649Z 发布（33 files，88,458 B）；`index.json` 的 `publishTimestamp=1794935503`，官方解析器 PASS（versions=6）；tag `v0.3.5` 与 GitHub Release 已完成；Desktop profile 已升级到 npm 0.3.5，并已于 2026-11-18 01:27:33 重启，当前运行 0.3.5。真实重启后的快照 UI 实机记录仍待采集。
