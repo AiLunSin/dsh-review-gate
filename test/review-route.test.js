@@ -3,7 +3,7 @@ import test from 'node:test'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { resolveConfig } from '../src/config.js'
-import { handleReviewRequest, REVIEW_UNITS_ROUTE } from '../src/review-route.js'
+import { handleReviewRequest, registerReviewRoute, REVIEW_UNITS_ROUTE } from '../src/review-route.js'
 
 const cwd = path.resolve('/w')
 const abs = value => path.resolve(cwd, value)
@@ -65,6 +65,22 @@ test('review route: path is below /api and matches the client fetch URL', () => 
     client.includes(`fetch(\`${relative}?`),
     `client.js must fetch ${relative}, the browser-relative form of ${REVIEW_UNITS_ROUTE}`,
   )
+})
+
+test('review route: the registered Fetch route calls the handler with its options object', async () => {
+  let route
+  const ctx = {
+    get: service => service === 'connection'
+      ? { fetch: { register: value => { route = value; return async () => {} } } }
+      : undefined,
+    effect: () => {},
+    logger: { warn: () => {} },
+  }
+  registerReviewRoute(ctx, resolveConfig({}))
+  assert.equal(route.path, REVIEW_UNITS_ROUTE)
+  const response = await route.fetch(new Request('http://127.0.0.1/api/review-gate.units'))
+  assert.equal(response.status, 400)
+  assert.equal(await response.text(), 'sessionId and seq are required.')
 })
 
 test('review route: graph units + ADR hint from an explicit scope', async () => {

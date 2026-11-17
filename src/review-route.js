@@ -38,7 +38,7 @@ export function registerReviewRoute(ctx, config) {
       path: REVIEW_UNITS_ROUTE,
       methods: ['GET'],
       requestBody: 'buffered',
-      fetch: request => handleReviewRequest(ctx, config, request),
+      fetch: request => handleReviewRequest({ ctx, config, request }),
     })
   } catch (error) {
     ctx.logger?.warn?.('[review-gate] review route unavailable:', error)
