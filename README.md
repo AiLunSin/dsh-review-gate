@@ -193,11 +193,11 @@ node scripts/build-release.mjs --name @ailunsin/dsh-review-gate
 
 发布形态（D4）：GitHub + npm + 自建索引。
 
-- GitHub：`AiLunSin/dsh-review-gate`（本地仓库已初始化；远程推送需仓库创建/凭据）
-- npm：`@ailunsin/dsh-review-gate`（`npm whoami` 已返回 `ailunsin`；尚未发布，2FA/OTP 仍可能需要）
+- GitHub：`AiLunSin/dsh-review-gate`（已推送，tag/Release 见仓库）
+- npm：`@ailunsin/dsh-review-gate@0.3.0`（已发布，latest）
 - 索引：仓库根 `index.json`，格式按 DSH 官方 `plugin-market` 校验
 
-具体命令与阻塞项见 `docs/release.md`。
+具体命令与当前状态见 `docs/release.md`。
 
 ## 路线图
 

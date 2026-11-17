@@ -1,22 +1,27 @@
 # 发布手册（dsh-review-gate 0.3.0）
 
-本文件记录三种发布形态（D4）的实际状态、命令与当前阻塞项。日期：2026-11-17。
+本文件记录三种发布形态（D4）的实际状态与命令。日期：2026-11-17。
 
 ## 0. 当前状态
 
-| 形态 | 状态 | 阻塞 |
-|---|---|---|
-| GitHub 仓库 | 本地 git 已初始化；远程仓库不存在 | 本机没有 `gh`，也没有可推送凭据；需账号持有人创建仓库或提供凭据 |
-| npm 包 | `dist/` 产物与 tarball 已生成；`npm pack` / 临时 profile 安装通过；本机 Desktop profile 安装 0.3.0 并通过 Client Inspect 确认页签 body 注册 | 尚未 `npm publish`；`npm whoami` 已是 `ailunsin`，但 2FA/OTP 可能仍需要 |
-| 自建索引 | `index.json` 已生成并通过官方 `parseMarketIndex` 校验 | 索引 URL 依赖 GitHub raw/Pages；需先完成 GitHub 发布 |
+| 形态 | 状态 |
+|---|---|
+| GitHub 仓库 | 已推送 public 仓库 `https://github.com/AiLunSin/dsh-review-gate`；tag `v0.1.0` / `v0.2.0` / `v0.3.0` 已推送 |
+| GitHub Release | `v0.3.0` 已发布，附 `ailunsin-dsh-review-gate-0.3.0.tgz`（79,905 B） |
+| npm 包 | `@ailunsin/dsh-review-gate@0.3.0` 已发布（`latest=0.3.0`；31 files） |
+| CI | GitHub Actions 在已推送的 `main` 上通过（lint、单测、构建、索引结构校验；e2e 不在 CI） |
+| 自建索引 | `index.json` 已随 `main` 推送；`publishTimestamp=1794888519`（2026-11-17T04:08:39Z，npm 实际发布时间） |
+| 本地 Desktop profile | junction 到本地 `dist/ailunsin--dsh-review-gate`，用于开发验证，与 npm tarball 独立 |
 
 已确认的事实：
 
 - npm 无 scope 名称 `dsh-review-gate` **已被无关项目占用**（0.2.0，post-turn code review），因此发布名固定为 `@ailunsin/dsh-review-gate`。
-- `npm view @ailunsin/dsh-review-gate` 返回 404，名称可用。
-- 本机 `npm whoami`：`ailunsin`（已登录；发布仍可能需要 OTP）。
-- 本机没有 `gh` CLI；`git ls-remote https://github.com/AiLunSin/dsh-review-gate.git` 返回 "Repository not found"。
+- `npm view @ailunsin/dsh-review-gate` 返回 `0.3.0`（latest）。
+- 本机 `npm whoami`：`ailunsin`。
+- 本机没有 `gh` CLI；仓库已通过 git 推送，维护不需要 `gh`。
 - 官方索引解析器校验通过：`plugins=1, versions=1`。
+- 索引 raw URL 未能从本机网络验证（curl 返回 000）；上线前请在外部网络确认 `https://raw.githubusercontent.com/AiLunSin/dsh-review-gate/main/index.json` 200 直出且无重定向。
+- 本地 `main` 在 `origin/main` 之后有尚未推送的测试/修复提交；推送后 CI 会重跑。
 
 ## 1. 构建发布包
 
@@ -41,13 +46,16 @@ npm pack
 # -> ailunsin-dsh-review-gate-0.3.0.tgz
 ```
 
-本机已生成并验证：
+已发布并验证：
 
-- `dist/ailunsin--dsh-review-gate/ailunsin-dsh-review-gate-0.3.0.tgz`
-- 用该 tarball 向临时 headless profile `plugin add` 成功，`--dump-config` 含 `@ailunsin/dsh-review-gate` 与 `id: review-gate`。
-- 本机 Desktop profile 安装 0.3.0：`application: applied`；Client Inspect 的 `sidebar.right.pane.tab` occupants 含 `@ailunsin/dsh-review-gate`（active）。
+- npm `0.3.0` 已发布；GitHub Release 附 tarball（79,905 B）。
+- 发布 tarball 内 `REVIEW_UNITS_ROUTE` 为 `/api/review-gate.units`，不含 `src/review-gate-e2e/` 测试夹具。
+- 本地 `dist/` 可用 `npm run build:release` 重建；用 `npm pack --dry-run --json` 核对文件清单。
+- 本机 Desktop profile 的 0.3.0 是 junction 到本地 `dist/` 的开发安装；npm tarball 实装用 `dsh plugin add @ailunsin/dsh-review-gate@0.3.0` 验证。
 
-## 2. npm 发布（需账号持有人）
+## 2. npm 发布（后续版本）
+
+0.3.0 已完成；以下命令用于下一个版本。
 
 ```powershell
 npm login
@@ -78,19 +86,12 @@ dsh plugin add @ailunsin/dsh-review-gate@0.3.0
 
 ## 3. GitHub 发布
 
-仓库目标：`https://github.com/AiLunSin/dsh-review-gate`。
-
-当前本地仓库已提交（见 `git log`），但没有远程。账号持有人任选其一：
+仓库：`https://github.com/AiLunSin/dsh-review-gate`（已推送 `main` 与 tag）。0.3.0 已完成；下一个版本沿用：
 
 ```powershell
-# 有 gh 时
-gh repo create AiLunSin/dsh-review-gate --public --source . --remote origin --push
-
-# 或先在网页创建空仓库，再
-git remote add origin https://github.com/AiLunSin/dsh-review-gate.git
-git push -u origin main
-git tag v0.3.0
-git push origin v0.3.0
+git push origin main
+git tag v0.3.1
+git push origin v0.3.1
 ```
 
 推送前确认：
@@ -113,7 +114,7 @@ https://raw.githubusercontent.com/AiLunSin/dsh-review-gate/main/index.json
 注意：
 
 - DSH 对索引 URL **严格按给定 URL 请求并拒绝重定向**；raw.githubusercontent.com 是 200 直出，可用。若用 GitHub Pages，请确认最终地址不跳转。
-- `versions[].publishTimestamp` 是 **Unix 秒**（不是 ISO 字符串）；npm 发布后把 `scripts` 中的占位时间改成实际发布时间再提交。
+- `versions[].publishTimestamp` 是 **Unix 秒**（不是 ISO 字符串）；0.3.0 已使用 npm 实际发布时间 `1794888519`，后续版本发布后同样更新并重新校验。
 - `icon` 是绝对 raw URL；索引解析器校验通过。
 - 发布前重新验证：
 
