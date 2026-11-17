@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$Version = '0.3.0',
   [string]$Otp = ''
 )
@@ -17,8 +17,16 @@ if ($pkg.name -ne '@ailunsin/dsh-review-gate') { throw "包名不是 @ailunsin/d
 if ($pkg.version -ne $Version) { throw "产物版本 $($pkg.version) 与请求版本 $Version 不一致" }
 
 Write-Host '检查 npm 登录态...'
-$who = (& npm.cmd whoami 2>&1 | Out-String).Trim()
-if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($who) -or $who -match 'E401|Unauthorized') {
+$who = ''
+$loginFailed = $false
+try {
+  $who = (& npm.cmd whoami 2>&1 | Out-String).Trim()
+} catch {
+  # 未登录时 npm 往 stderr 写错误，在 Stop 策略下会先抛 NativeCommandError，这里降级为可读提示
+  $who = $_.Exception.Message.Trim()
+  $loginFailed = $true
+}
+if ($loginFailed -or $LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($who) -or $who -match 'E401|Unauthorized') {
   Write-Host "npm 未登录或凭据过期。请先运行：npm login" -ForegroundColor Yellow
   Write-Host "当前 whoami 输出：$who" -ForegroundColor Yellow
   exit 1
