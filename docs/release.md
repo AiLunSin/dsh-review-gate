@@ -9,7 +9,7 @@
 | GitHub 仓库 | 已推送 public 仓库 `https://github.com/AiLunSin/dsh-review-gate`；tag `v0.1.0` / `v0.2.0` / `v0.3.0` / `v0.3.1` 已推送 |
 | GitHub Release | `v0.3.0` / `v0.3.1` 已发布；v0.3.1 附 `ailunsin-dsh-review-gate-0.3.1.tgz`（80,178 B，sha256 `cc8874e5…`） |
 | npm 包 | `@ailunsin/dsh-review-gate@0.3.1` 已发布（`latest=0.3.1`；31 files） |
-| CI | GitHub Actions 在 `main` 上通过（lint、单测、构建、索引结构校验）；新增 `index-reachability` workflow，首次 run 待记录 |
+| CI | GitHub Actions 在 `main` 上通过：`ci`（lint、单测、构建、索引结构校验）与 `index-reachability`（raw 200 直出 + 内容一致） |
 | 自建索引 | `index.json` 含 0.3.1；`publishTimestamp=1794896317`（2026-11-17T06:18:37Z，npm 实际发布时间） |
 | 本地 Desktop profile | junction 到本地 `dist/ailunsin--dsh-review-gate`（0.3.1），用于开发验证，与 npm tarball 独立 |
 
@@ -20,7 +20,7 @@
 - 本机 `npm whoami`：`ailunsin`。
 - 本机没有 `gh` CLI；仓库已通过 git 推送，维护不需要 `gh`。
 - 官方索引解析器校验通过：`plugins=1, versions=2`。
-- 索引 raw URL 未能从本机网络验证（curl 返回 000、PowerShell 超时）；GitHub API 已确认 `index.json` 在 `main` 且含 0.3.1。已新增 `index-reachability` workflow，由 GitHub Actions runner 断言 raw 200 直出 + 内容 sha256 一致，首次 run 结果待记录。
+- 索引 raw URL 已由 GitHub Actions runner 验证：[index-reachability run 44072294082](https://github.com/AiLunSin/dsh-review-gate/actions/runs/44072294082) PASS：200 直出、无重定向，`index.json` 2,102 B / sha256 `48558004015baac33e6cd3e8e1c64c1f8aa1ea21dd07dbbc7fb89b62c1c2aceb` 与仓库一致，`icon.svg` 200 且为 SVG。本机到 raw 域名仍超时，这是本地链路问题，不影响其他用户。
 - 本地 `main` 已与 `origin/main` 一致（`c47a9da`）；`v0.3.1` tag 已推送，Release 已创建并上传 tarball 附件。
 
 ## 1. 构建发布包
@@ -113,7 +113,7 @@ https://raw.githubusercontent.com/AiLunSin/dsh-review-gate/main/index.json
 
 注意：
 
-- DSH 对索引 URL **严格按给定 URL 请求并拒绝重定向**；raw 必须 200 直出。仓库已用 `index-reachability` workflow 自动断言（首次 run 待记录）；GitHub Pages 的最终地址同样不能跳转。
+- DSH 对索引 URL **严格按给定 URL 请求并拒绝重定向**；raw 必须 200 直出。仓库的 [index-reachability run 44072294082](https://github.com/AiLunSin/dsh-review-gate/actions/runs/44072294082) 已断言 200 直出 + 内容一致；GitHub Pages 的最终地址同样不能跳转。
 - `versions[].publishTimestamp` 是 **Unix 秒**（不是 ISO 字符串）；0.3.1 已使用 npm 实际发布时间 `1794896317`，后续版本发布后同样更新并重新校验。
 - `icon` 是绝对 raw URL；索引解析器校验通过。
 - 发布前重新验证：
