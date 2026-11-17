@@ -153,4 +153,4 @@ node scripts\validate-market-index.mjs
   3. tag `v0.3.5` 已推送；
   4. GitHub Release 已创建并上传 `ailunsin-dsh-review-gate-0.3.5.tgz`；
   5. Desktop profile 已升级到 npm `0.3.5`，并已于 2026-11-18 01:27:33 重启，当前运行 0.3.5。
-- **遗留**：真实 DSH 重启后的快照 UI 观感仍需实机采集（见 `docs/verification-0.3.1.md`）。
+- **实机验证**：真实 DSH 重启后已确认快照 UI（2026-11-18）：显示“Host 已重启，显示 2026/11/18 01:30:18 的上一轮快照；文件内容未重新读取。”，2 文件 +13/−13，文件行不可点击、无打开提示、无 diff。

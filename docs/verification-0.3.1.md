@@ -70,11 +70,11 @@ B5 视觉由 B12 的第 19/21 轮实际页签覆盖（导入图分组、目录�
    - stale 状态显示快照提示，文件行 class 为 `rg-file rg-file-static`，无 `openHint`；
    - 正常轮次文件行为 `rg-file` 可点击，且有 `openHint`。
 
-**未完成**：真实 DSH 重启后的 UI 实机记录**尚未采集**，不得视为已完成验证。
+**已实机验证（2026-11-18）**：真实 DSH 重启后打开「审查顺序」，显示“Host 已重启，显示 2026/11/18 01:30:18 的上一轮快照；文件内容未重新读取。”；2 个文件 +13/−13，目录分组；文件行不可点击，无打开提示，无 diff。
 
 ### 0.3.5（已发布）
 
 - **修复**：`prune` 只匹配文件名 `^[0-9a-f]{16}-\d{10}\.json$` 的快照文件；`review.snapshot.dir` 指向共享目录时不再误删无关 JSON。新增测试断言 `keep.json` / `package.json` / 非补零命名文件不被删除。
 - **提交**：`b1c3e80 fix: prune only review-gate snapshot files`。
 - **测试/构建**：`151/151` pass；dist 0.3.5 已构建；`npm run smoke:install` PASS。
-- **发布**：npm `0.3.5` 于 2026-11-17T17:11:43.649Z 发布（33 files，88,458 B）；`index.json` 的 `publishTimestamp=1794935503`，官方解析器 PASS（versions=6）；tag `v0.3.5` 与 GitHub Release 已完成；Desktop profile 已升级到 npm 0.3.5，并已于 2026-11-18 01:27:33 重启，当前运行 0.3.5。真实重启后的快照 UI 实机记录仍待采集。
+- **发布**：npm `0.3.5` 于 2026-11-17T17:11:43.649Z 发布（33 files，88,458 B）；`index.json` 的 `publishTimestamp=1794935503`，官方解析器 PASS（versions=6）；tag `v0.3.5` 与 GitHub Release 已完成；Desktop profile 已升级到 npm 0.3.5，并已于 2026-11-18 01:27:33 重启，当前运行 0.3.5；真实重启后的快照 UI 已实机验证（见上）。
