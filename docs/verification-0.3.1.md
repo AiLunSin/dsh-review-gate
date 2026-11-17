@@ -25,3 +25,9 @@
 
 - DSH 重启后，客户端持久化的 `review-gate/changes` 投影可能仍指向重启前的轮次（本地复现为 turn 11 / seq 2291）；此时 Host 已不再提供该轮 summary，页签进入 `missing` 状态。当前实现仍会在该状态渲染“点击文件打开内置 changes-review 页签”的提示，且滚动位置可能停在底部，因此看起来像空页签。
 - 触发一轮新的、会写文件的对话后，`workspace/changes` 更新，页签会切换到新轮次；必要时关闭并重新打开页签以复位滚动。0.3.2 已修复：`missing` 状态隐藏打开提示、显示恢复提示、复位滚动，并将提示左对齐以适配窄面板。
+
+## 0.3.2 补充
+
+- npm `0.3.2` 于 2026-11-17T15:20:20Z 发布（32 files；tarball 82,660 B，sha256 `986fbebd…`），修复上述 `missing` 状态 UI。
+- `index.json` 加入 0.3.2（`publishTimestamp=1794928820`），官方解析器 PASS (versions=3)；[index-reachability run 44114301707](https://github.com/AiLunSin/dsh-review-gate/actions/runs/44114301707) PASS，raw 2,323 B / sha256 `7434b366…` 与仓库一致。
+- tag `v0.3.2` 已推送；GitHub Release 待创建。Desktop profile 已安装 npm 0.3.2，重启后生效。
