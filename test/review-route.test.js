@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { resolveConfig } from '../src/config.js'
-import { handleReviewRequest } from '../src/review-route.js'
+import { handleReviewRequest, REVIEW_UNITS_ROUTE } from '../src/review-route.js'
 
 const cwd = path.resolve('/w')
 const abs = value => path.resolve(cwd, value)
@@ -53,6 +54,18 @@ const summary = {
 function request(seq = 5, sessionId = 'session-1') {
   return new Request(`http://127.0.0.1/api/review-gate.units?sessionId=${sessionId}&seq=${seq}`)
 }
+
+test('review route: path is below /api and matches the client fetch URL', () => {
+  // ConnectionFetchRoute.path is an absolute path below /api; Connection's
+  // registry rejects any other shape before the route can be mounted.
+  assert.ok(REVIEW_UNITS_ROUTE.startsWith('/api/'), 'route must be an absolute path below /api')
+  const relative = REVIEW_UNITS_ROUTE.slice(1)
+  const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  assert.ok(
+    client.includes(`fetch(\`${relative}?`),
+    `client.js must fetch ${relative}, the browser-relative form of ${REVIEW_UNITS_ROUTE}`,
+  )
+})
 
 test('review route: graph units + ADR hint from an explicit scope', async () => {
   const files = {
