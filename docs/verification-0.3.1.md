@@ -30,4 +30,4 @@
 
 - npm `0.3.2` 于 2026-11-17T15:20:20Z 发布（32 files；tarball 82,660 B，sha256 `986fbebd…`），修复上述 `missing` 状态 UI。
 - `index.json` 加入 0.3.2（`publishTimestamp=1794928820`），官方解析器 PASS (versions=3)；[index-reachability run 44114301707](https://github.com/AiLunSin/dsh-review-gate/actions/runs/44114301707) PASS，raw 2,323 B / sha256 `7434b366…` 与仓库一致。
-- tag `v0.3.2` 已推送；GitHub Release 待创建。Desktop profile 已安装 npm 0.3.2，重启后生效。
+- tag `v0.3.2` 已推送；GitHub Release 已创建并上传 `ailunsin-dsh-review-gate-0.3.2.tgz`（82,660 B，digest `sha256:986fbebd…`）。Desktop profile 已安装 npm 0.3.2，重启后生效。

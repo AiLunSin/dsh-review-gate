@@ -7,7 +7,7 @@
 | 形态 | 状态 |
 |---|---|
 | GitHub 仓库 | 已推送 public 仓库 `https://github.com/AiLunSin/dsh-review-gate`；tag `v0.1.0` / `v0.2.0` / `v0.3.0` / `v0.3.1` / `v0.3.2` 已推送 |
-| GitHub Release | `v0.3.0` / `v0.3.1` 已发布；`v0.3.2` Release 待创建（tag 与 npm 包已就绪） |
+| GitHub Release | `v0.3.0` / `v0.3.1` / `v0.3.2` 已发布；v0.3.2 附 `ailunsin-dsh-review-gate-0.3.2.tgz`（82,660 B，digest `sha256:986fbebd…`） |
 | npm 包 | `@ailunsin/dsh-review-gate@0.3.2` 已发布（`latest=0.3.2`；32 files） |
 | CI | GitHub Actions 在 `main` c86b44e 上通过：`ci`（[run](https://github.com/AiLunSin/dsh-review-gate/actions/runs/44114301548)）与 `index-reachability`（[run](https://github.com/AiLunSin/dsh-review-gate/actions/runs/44114301707)） |
 | 自建索引 | `index.json` 含 0.3.2；`publishTimestamp=1794928820`（2026-11-17T15:20:20Z，npm 实际发布时间） |
@@ -21,7 +21,7 @@
 - 本机没有 `gh` CLI；仓库已通过 git 推送，维护不需要 `gh`。
 - 官方索引解析器校验通过：`plugins=1, versions=3`。
 - 索引 raw URL 已由 GitHub Actions runner 验证（0.3.2 内容）：[index-reachability run 44114301707](https://github.com/AiLunSin/dsh-review-gate/actions/runs/44114301707) PASS：200 直出、无重定向，`index.json` 2,323 B / sha256 `7434b366953b8fe0393254aca208f9da02cc7c7e7561dd63b8d43d1662d5ab56` 与仓库一致，`icon.svg` 200 且为 SVG。本机到 raw 域名仍超时，这是本地链路问题。
-- `v0.3.2` tag 已推送；GitHub Release 待创建。
+- `v0.3.2` tag 与 GitHub Release 已完成；Release 附件 digest `sha256:986fbebd…` 与 npm tarball 一致。
 
 ## 1. 构建发布包
 
@@ -86,11 +86,12 @@ dsh plugin add @ailunsin/dsh-review-gate@0.3.2
 
 ## 3. GitHub 发布
 
-仓库：`https://github.com/AiLunSin/dsh-review-gate`（`main` 与 tag `v0.3.2` 已推送）。0.3.2 的 npm 包已发布；GitHub Release 待创建（tag 已存在）：
+仓库：`https://github.com/AiLunSin/dsh-review-gate`（`main` 与 tag `v0.3.2` 已推送）。0.3.2 已完成（npm + GitHub Release 附件）；下一个版本沿用：
 
 ```powershell
-# 推荐在 GitHub Releases 页面用 tag v0.3.2 创建 Release，并上传
-# dist\ailunsin-dsh-review-gate-0.3.2.tgz（sha256 986fbebd…）
+git tag v0.3.3
+git push origin main
+git push origin v0.3.3
 ```
 
 推送前确认：
