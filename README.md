@@ -180,7 +180,7 @@ dsh plugin add @ailunsin/dsh-review-gate@0.3.2
 ## 开发
 
 ```text
-node --test "test/*.test.js"   # 136 tests
+node --test "test/*.test.js"   # 139 tests
 node e2e/run.mjs               # 真实 DSH headless：never 策略 + fs 安全网
 node e2e/approval.mjs          # 真实 DSH headless：ask → 拒绝 / ask → 允许 + approval 审计
 node scripts/check-syntax.mjs

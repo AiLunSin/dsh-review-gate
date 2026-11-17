@@ -7,6 +7,8 @@
 | 方法 | 读取已安装 ASAR 内 `@deepseek-ai/*` 源码与 README；真实 DSH headless 冒烟；单元/集成测试 |
 | 结论 | **P0 GO + P1 注册验证**：6 项全部关闭；P1 侧栏 body 在 Desktop profile 中 active，视觉人工验收仍待做 |
 
+> 后续状态（0.3.1/0.3.2，2026-11-18）：本文的 136 tests 和“视觉/P2 未人工验收”是 M0 时点快照。B4/B5/B6/B7/B8/B9/B10（配置层）/B12 已完成，P2 路由已修复，当前 139 tests。详见 [verification-0.3.1.md](verification-0.3.1.md)。
+
 ---
 
 ## 1. 六项验证结论
@@ -34,7 +36,7 @@
 
 - `review-route` 单测用真实 `Request`/`Response` 形状覆盖 200 图分组 + ADR hint、400 参数、404 summary、503 无 workspaceChanges、无 FS 时目录回退。
 - 路由注册在 `connection` 服务上，经 `ctx.inject(['connection'])` 延迟注册，避免加载顺序导致静默缺失；headless 无 Connection 时不注册（e2e 回归 PASS）。
-- 真实浏览器中的 `/api/review-gate.units` 请求与决策提示渲染未人工验收。
+- 真实浏览器中的 `/api/review-gate.units` 请求与决策提示渲染未人工验收（后续 B4/B6 已验收）。
 
 ---
 
@@ -86,7 +88,7 @@ e2e: PASS pre-execute deny/allow + fs safety net + audit + no out-of-scope file
 
 | 项 | 结果 |
 |---|---|
-| 单元/集成测试 | `node --test "test/*.test.js"`：**136 passed / 0 failed**（glob、scope、rules、adapters、decide、audit、config、projection、client 分组/注册/空态渲染、导入图/决策提示/认证路由、plugin 生命周期、approval 回执、fs realpath 安全网、fs intent 委托） |
+| 单元/集成测试 | `node --test "test/*.test.js"`：**136 passed / 0 failed**（M0 快照；当前 139，见 verification-0.3.1.md；glob、scope、rules、adapters、decide、audit、config、projection、client 分组/注册/空态渲染、导入图/决策提示/认证路由、plugin 生命周期、approval 回执、fs realpath 安全网、fs intent 委托） |
 | 真实 DSH e2e | 两条均 PASS：`e2e/run.mjs`（never + fs 安全网）、`e2e/approval.mjs`（ask→拒绝 / ask→允许 + approval 审计） |
 | 决策性能基准 | 2,000 次范围内 write 决策，P95 < 50ms、均值 < 10ms（单测断言；本机实际远低于） |
 | 隐私 | 审计白名单丢弃 `content`/`old_string`；e2e 断言审计文本不含敏感源码 |
@@ -95,8 +97,8 @@ e2e: PASS pre-execute deny/allow + fs safety net + audit + no out-of-scope file
 
 ## 5. 未验证 / 已知限制（交付时保留）
 
-1. 真实浏览器里的浅色/深色、窄栏布局与点击跳转：P1 tab body 已通过 Client Inspect 确认 active，但视觉/交互未人工验收。
-2. 真实 Web `ApprovalPanel` 的人工点击/渲染未验收；但真实 DSH 审批管道已用 fake answerer 覆盖 ask→`rejected` 与 ask→`allowed-once`（`e2e/approval.mjs`），包括 `approval/asked`/`decided` 与插件审计回执。
+1. 真实浏览器里的浅色/深色、窄栏布局与点击跳转：M0 时仅完成 Client Inspect 注册验证；后续 B8/B12 已实机验收（2026-11-18）。
+2. 真实 Web `ApprovalPanel` 的人工点击/渲染未验收；后续 B7 已验收；真实 DSH 审批管道已用 fake answerer 覆盖 ask→`rejected` 与 ask→`allowed-once`（`e2e/approval.mjs`），包括 `approval/asked`/`decided` 与插件审计回执。
 3. `bash` / `pwsh` / MCP / 绕过 `fs/*-intent` 的写入不拦截。
 4. 子 Agent：全局 pre-execute 会覆盖其调用；`fork` 复制父前缀（含 `command/run`）所以继承范围，`spawn` 子 Agent 是新会话、不自动继承父范围（P0 未做显式继承）。
 5. 大文件/远程 fs：`readText` 无 `maxBytes` 参数，依赖 `stat.size` 上限；后端不报 size 时可能先整读再丢弃。

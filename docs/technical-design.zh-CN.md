@@ -406,7 +406,7 @@ function approvalAvailability(ctx, agent): 'available' | 'never' | 'absent' {
 - **Client tab 类型**：`ctx.sidebarRightTabs.register({id:'@ailunsin/dsh-review-gate', kind:'review-gate', priority:'extension', guide:[…]})`；tab body 注册在 `sidebar.right.pane.tab` 的同一 key 下，使用 `useProjection`、`useTabInfo` 标准 props。
 - **取数**：Client 用 `useProjection('review-gate/changes')` 得到 seq，`fetch('api/changes.summary?sessionId&seq')`（内置认证路由，方法 A；document-relative，与内置 deliverables 一致），纯前端 `buildUnits` 分组。
 - **跳转**：点击文件用 `tab.actions.openResource('dsh-resource://changes-review/session/<sid>/<seq>/<turn>', { params: { index } })` 打开内置 `changes-review`，不重绘 diff。
-- **验证**：Client bundle 已安装到当前 Desktop profile；Client Inspect 的 `sidebar.right.pane.tab` occupants 出现 `@ailunsin/dsh-review-gate`（active）。视觉/交互未人工验收。
+- **验证**：Client bundle 已安装到当前 Desktop profile；Client Inspect 的 `sidebar.right.pane.tab` occupants 出现 `@ailunsin/dsh-review-gate`（active）。视觉/交互已由 B8/B12 实机验收（2026-11-18，见 `docs/verification-0.3.1.md`）。
 - **偏差**：未注册 Host 自有路由（方案 B），因此不需要额外鉴权；`review` 配置通过 projection 下发，不在 Client 重复读取 Host 配置。
 
 ### 9.1 数据获取（两条路径，先 A 后 B）
@@ -669,7 +669,7 @@ window.__ModuleLoader__.load({
 
 | 层级 | 内容 | 工具 |
 |---|---|---|
-| 单元 | glob 匹配表、行差集、规则匹配、决策矩阵、文案格式、路径归一化、配置校验、审查单元分组、导入解析、决策提示、projection wire | `node:test`（`test/*.test.js`，136 项） |
+| 单元 | glob 匹配表、行差集、规则匹配、决策矩阵、文案格式、路径归一化、配置校验、审查单元分组、导入解析、决策提示、projection wire | `node:test`（`test/*.test.js`，139 项） |
 | 集成 | 假 `ctx` 驱动 apply / pre-execute / fs 安全网 / guard / 卸载清理；审批桩覆盖 available/never/absent | `node:test` |
 | 端到端 | 真实 DSH headless：never + fs 安全网（`e2e/run.mjs`）；ask→reject / ask→allow + approval 审计（`e2e/approval.mjs`） | 真实 profile |
 | Client | Client Inspect 验证 tab body `@ailunsin/dsh-review-gate` 在 `sidebar.right.pane.tab` active；client.js 单测（工厂注册/分组） | 本机 Desktop profile |
@@ -781,6 +781,6 @@ window.__ModuleLoader__.load({
 5. 审批服务存在但无 answerer（headless/无 UI）时，`ask` 由 DSH 管道 fail-closed 成拒绝；`onApprovalUnavailable: allow` 只覆盖"无服务 / 策略 never"。
 6. 子 Agent 的写入会被拦，但 scope 取子会话自身，父会话范围不自动继承；P1 审查单元不含子会话（内置 `workspace/changes` 不记录）。
 7. P1 审查顺序只显示当前会话最近一次 `workspace/changes`；无导入图（P2）；分组是目录/入口启发式，不把敏感规则或越界状态混入排序；依赖内置 `/api/changes.summary` 与 `changes-review` 页签，DSH 升级需回归。
-8. P1 的 Client 视觉/交互（浅色/深色、窄栏、点击跳转）尚未人工验收；只完成了 Client Inspect 注册验证与 client.js 单测。
+8. P1 的 Client 视觉/交互（浅色/深色、窄栏、点击跳转）已由 B8/B12 实机验收（2026-11-18，见 `docs/verification-0.3.1.md`）；此前仅完成 Client Inspect 注册验证与 client.js 单测。
 9. P2 决策提示只认可显式 `Applies to:` 范围 + 反引号标识符命中，属保守启发式；无结构化范围的 ADR 不会提示，可能漏报，不构成合规证明。导入图只解析改动文件之间的相对 import，不跟包名/跨包。
 10. P2 Host 路由经 Connection 认证；无 Web/Connection 的 profile（如 headless）不注册，Client 回退 P1 目录分组。
