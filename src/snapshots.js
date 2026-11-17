@@ -16,6 +16,7 @@ import { defaultHome } from './audit.js'
 
 const MAX_ENTRIES = 20
 const MAX_FILES = 2_000
+const SNAPSHOT_FILE = /^[0-9a-f]{16}-\d{10}\.json$/
 
 /** @returns {string} */
 export function defaultSnapshotDir() {
@@ -144,7 +145,7 @@ export class ChangeSnapshots {
   async prune() {
     try {
       const entries = await fsp.readdir(this.dir, { withFileTypes: true })
-      const files = entries.filter(isFileEntry).filter(entry => entry.name.endsWith('.json'))
+      const files = entries.filter(isFileEntry).filter(entry => SNAPSHOT_FILE.test(entry.name))
       if (files.length <= MAX_ENTRIES) return
       const stats = await Promise.all(files.map(async entry => ({
         name: entry.name,

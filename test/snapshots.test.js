@@ -87,6 +87,23 @@ test('snapshots: prune keeps the newest 20 entries', async () => {
   }
 })
 
+test('snapshots: prune never deletes unrelated files in a custom directory', async () => {
+  const { dir, store } = await tempStore()
+  try {
+    await fsp.writeFile(path.join(dir, 'keep.json'), '{"keep":true}', 'utf8')
+    await fsp.writeFile(path.join(dir, 'package.json'), '{}', 'utf8')
+    await fsp.writeFile(path.join(dir, 'deadbeefdeadbeef-42.json'), '{}', 'utf8')
+    for (let seq = 1; seq <= 23; seq += 1) await store.capture('session-1', seq, payload)
+    const names = await fsp.readdir(dir)
+    assert.ok(names.includes('keep.json'), 'unrelated JSON must survive prune')
+    assert.ok(names.includes('package.json'), 'unrelated JSON must survive prune')
+    assert.ok(names.includes('deadbeefdeadbeef-42.json'), 'only padded snapshot names may be pruned')
+    assert.equal(names.filter(name => /^[0-9a-f]{16}-\d{10}\.json$/.test(name)).length, 20)
+  } finally {
+    await fsp.rm(dir, { recursive: true, force: true })
+  }
+})
+
 test('snapshots: a write failure only warns once', async () => {
   const warnings = []
   const blocker = await fsp.mkdtemp(path.join(os.tmpdir(), 'rg-snapshots-blocked-'))

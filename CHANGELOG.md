@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.5 — 2026-11-18
+
+- Fix: `prune` only considers files matching the snapshot name pattern
+  (`<16 hex>-<10 digits>.json`). Previously any `.json` file in
+  `review.snapshot.dir` counted toward the 20-entry cap and could be deleted
+  when the directory was customised, so a shared or project directory risked
+  losing unrelated JSON files. Unrelated files are now never touched.
+- 151 tests.
+
 ## 0.3.4 — 2026-11-18
 
 - After a DSH restart, a persisted `review-gate/changes` projection now resolves
