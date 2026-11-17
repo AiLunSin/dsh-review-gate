@@ -463,6 +463,7 @@ function buildUnits(files: ChangedFile[], cfg: ReviewConfig): ReviewUnit[] {
 - **不存什么**：不存文件正文、diff、决策提示文本、`cwd`；只存渲染所需的路径与计数，保证「不存正文」约束不被快照破坏。
 - **Client**：`stale` 时显示「Host 已重启，显示 {time} 的上一轮快照」提示，文件行改为不可点击，隐藏「点击文件…」提示；正常轮次行为不变。
 - **代价**：只在打开过页签、成功取到一次清单后才有快照；快照不反映之后的工作区变化，因此必须显式标注为快照且禁止打开文件。
+- **0.3.5 prune 约束**：清理只统计并删除文件名匹配 `^[0-9a-f]{16}-\d{10}\.json$` 的快照；`review.snapshot.dir` 指向共享目录时，`keep.json`、`package.json` 及非补零命名的 JSON 既不计入 20 份上限，也不会被删除。
 - **关闭**：`review.snapshot.enabled: false` 恢复 0.3.3 的空态行为。
 
 ### 9.4 侧栏页签（实际）
@@ -678,7 +679,7 @@ window.__ModuleLoader__.load({
 
 | 层级 | 内容 | 工具 |
 |---|---|---|
-| 单元 | glob 匹配表、行差集、规则匹配、决策矩阵、文案格式、路径归一化、配置校验、审查单元分组、导入解析、决策提示、projection wire | `node:test`（`test/*.test.js`，142 项） |
+| 单元 | glob 匹配表、行差集、规则匹配、决策矩阵、文案格式、路径归一化、配置校验、审查单元分组、导入解析、决策提示、projection wire、快照（roundtrip、malformed、prune 保留 20 条、无关 JSON 不删、写失败只告警一次） | `node:test`（`test/*.test.js`，151 项） |
 | 集成 | 假 `ctx` 驱动 apply / pre-execute / fs 安全网 / guard / 卸载清理；审批桩覆盖 available/never/absent | `node:test` |
 | 端到端 | 真实 DSH headless：never + fs 安全网（`e2e/run.mjs`）；ask→reject / ask→allow + approval 审计（`e2e/approval.mjs`） | 真实 profile |
 | Client | Client Inspect 验证 tab body `@ailunsin/dsh-review-gate` 在 `sidebar.right.pane.tab` active；client.js 单测（工厂注册/分组） | 本机 Desktop profile |

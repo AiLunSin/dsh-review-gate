@@ -1,6 +1,6 @@
 # dsh-review-gate
 
-> **状态：P0 + P1 + P2 已实现（0.3.3）。** P0 通过真实 DSH `0.2.2-rc.3` headless 冒烟；P1 侧栏“审查顺序”页签已在当前 Desktop profile 注册；P2 增加导入图分组与决策提示（Host 认证路由 + 保守启发式）。发布名为 `@ailunsin/dsh-review-gate`（npm 上无 scope 的 `dsh-review-gate` 已被无关项目占用）。
+> **状态：P0 + P1 + P2 已实现（0.3.4）。** P0 通过真实 DSH `0.2.2-rc.3` headless 冒烟；P1 侧栏“审查顺序”页签已在当前 Desktop profile 注册；P2 增加导入图分组与决策提示（Host 认证路由 + 保守启发式）。发布名为 `@ailunsin/dsh-review-gate`（npm 上无 scope 的 `dsh-review-gate` 已被无关项目占用）。
 
 **给 DeepSeek Harness 加上"写入前的确定性边界"和"写入后的审查顺序"。**
 
@@ -30,7 +30,7 @@
 
 ## 安装
 
-当前版本是本地/源码分发；npm 与 GitHub 产物随发布准备（见 [发布](#发布) 与 [`docs/release.md`](docs/release.md)）。
+npm 已发布 `0.3.4`（latest）；GitHub tag/Release 见仓库（见 [发布](#发布) 与 [`docs/release.md`](docs/release.md)）。
 
 ```text
 # 开发安装：插件管理器 → Add plugin → 填本仓库绝对路径
@@ -38,7 +38,7 @@
 dsh plugin add C:\Users\11403\Desktop\one_too
 
 # npm 发布后：
-dsh plugin add @ailunsin/dsh-review-gate@0.3.2
+dsh plugin add @ailunsin/dsh-review-gate@0.3.4
 ```
 
 安装后在新会话里检查 **Plugins** 中的 **Review gate** 行；改配置后按 DSH 的提示重启或让 HMR 生效。
@@ -165,6 +165,8 @@ dsh plugin add @ailunsin/dsh-review-gate@0.3.2
 
 页签成功取到一次改动清单后，会把 `turn/total/added/deleted/files[path,display,added,deleted,binary?,oversized?]` 写到 `$DSH_HOME/review-gate/snapshots`（原子写，保留最近 20 份，文件名是会话哈希 + 补零 seq）。DSH 重启后路由 404 时读回快照，响应带 `stale:true` 与 `capturedAt`；页签显示「Host 已重启，显示 … 的上一轮快照」、文件行不可点击、隐藏打开提示。**不存文件正文、diff、决策提示文本或 `cwd`**；`review.snapshot.enabled=false` 关闭，恢复空态。
 
+0.3.5 起 `prune` 只把文件名匹配 `^[0-9a-f]{16}-\d{10}\.json$` 的文件计入 20 份上限并清理；`review.snapshot.dir` 指向共享目录时，其它 `.json` 文件不会被误删。
+
 ## 已知限制（请先读）
 
 1. **不拦 shell。** `bash` / `pwsh` / MCP 工具直接写文件不受本插件约束；`fs/*-intent` 安全网只覆盖**主动经过该事件**的文件工具。需要硬边界时配合 DSH 沙箱模式。
@@ -187,7 +189,7 @@ dsh plugin add @ailunsin/dsh-review-gate@0.3.2
 ## 开发
 
 ```text
-node --test "test/*.test.js"   # 142 tests
+node --test "test/*.test.js"   # 151 tests
 node e2e/run.mjs               # 真实 DSH headless：never 策略 + fs 安全网
 node e2e/approval.mjs          # 真实 DSH headless：ask → 拒绝 / ask → 允许 + approval 审计
 node scripts/check-syntax.mjs
@@ -201,7 +203,7 @@ node scripts/build-release.mjs --name @ailunsin/dsh-review-gate
 发布形态（D4）：GitHub + npm + 自建索引。
 
 - GitHub：`AiLunSin/dsh-review-gate`（已推送，tag/Release 见仓库）
-- npm：`@ailunsin/dsh-review-gate@0.3.2`（已发布，latest）
+- npm：`@ailunsin/dsh-review-gate@0.3.4`（已发布，latest）
 - 索引：仓库根 `index.json`，格式按 DSH 官方 `plugin-market` 校验
 
 具体命令与当前状态见 `docs/release.md`。

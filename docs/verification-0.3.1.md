@@ -51,3 +51,30 @@ B5 视觉由 B12 的第 19/21 轮实际页签覆盖（导入图分组、目录�
 - npm `0.3.2` 于 2026-11-17T15:20:20Z 发布（32 files；tarball 82,660 B，sha256 `986fbebd…`），修复上述 `missing` 状态 UI。
 - `index.json` 加入 0.3.2（`publishTimestamp=1794928820`），官方解析器 PASS (versions=3)；[index-reachability run 44114301707](https://github.com/AiLunSin/dsh-review-gate/actions/runs/44114301707) PASS，raw 2,323 B / sha256 `7434b366…` 与仓库一致。
 - tag `v0.3.2` 已推送；GitHub Release 已创建并上传 `ailunsin-dsh-review-gate-0.3.2.tgz`（82,660 B，digest `sha256:986fbebd…`）。Desktop profile 已安装 npm 0.3.2，重启后生效。
+
+## 0.3.4 / 0.3.5 验证记录（2026-11-17 / 18）
+
+### 0.3.3 与 0.3.4 发布
+
+- **0.3.3**：tag 指向提交 `b78c535`；npm 于 2026-11-17T16:44:36Z 发布；`index.json` 的 `publishTimestamp=1794933876`。
+- **0.3.4**：npm 于 2026-11-17T16:52:00.752Z 发布（latest），`index.json` 的 `publishTimestamp=1794934320`；tag 指向提交 `8379b02`，功能提交为 `cc7aa2b`；CI（8379b02）success；[index-reachability run 44131086045](https://github.com/AiLunSin/dsh-review-gate/actions/runs/44131086045) PASS。
+- **GitHub Release**：`v0.3.4` 已发布，附件 `ailunsin-dsh-review-gate-0.3.4.tgz`，33 files、88,424 B。
+
+### 0.3.4 快照验证（已执行）
+
+1. 0.3.4 发布前测试为 `150/150` pass（151 是加入 0.3.5 prune 用例后的总数）。
+2. 用打包后的 dist 做两进程“重启”模拟：
+   - live 阶段：HTTP 200，快照文件 363 B；落盘内容不含 `content` / `hints` / `cwd` / `diff`。
+   - restart 阶段：HTTP 200，响应头 `x-review-gate-snapshot: 1`，`stale:true`，`capturedAt` 存在；3 个文件 / 3 个审查单元完整还原，`hints` 为空。
+3. 渲染级检查：
+   - stale 状态显示快照提示，文件行 class 为 `rg-file rg-file-static`，无 `openHint`；
+   - 正常轮次文件行为 `rg-file` 可点击，且有 `openHint`。
+
+**未完成**：真实 DSH 重启后的 UI 实机记录**尚未采集**，不得视为已完成验证。
+
+### 0.3.5（尚未发布）
+
+- **修复**：`prune` 只匹配文件名 `^[0-9a-f]{16}-\d{10}\.json$` 的快照文件；`review.snapshot.dir` 指向共享目录时不再误删无关 JSON。新增测试断言 `keep.json` / `package.json` / 非补零命名文件不被删除。
+- **提交**：`b1c3e80 fix: prune only review-gate snapshot files`。
+- **测试/构建**：`151/151` pass；已构建 dist 0.3.5；`npm run smoke:install` PASS。
+- **状态**：0.3.5 尚未发布（npm / tag / Release / index 均未更新）；发布命令为 `powershell -ExecutionPolicy Bypass -File .\scripts\publish-npm.ps1 -Version 0.3.5`。
