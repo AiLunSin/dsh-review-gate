@@ -88,13 +88,42 @@ for (const forbidden of ['test/glob.test.js', 'e2e/run.mjs', 'scripts/build-rele
   if (files.has(forbidden)) fail(`npm pack should not include ${forbidden}`)
 }
 
-const installDir = process.env.DSH_INSTALL_DIR
-const nodeExecutable = process.env.DSH_NODE_EXECUTABLE
-if (installDir && nodeExecutable) {
-  const cli = path.join(installDir, 'lib', 'bin.js')
+/**
+ * Resolve how to start the DSH CLI. The npm-style install exposes
+ * `<installDir>/lib/bin.js`; the Desktop build keeps the CLI inside app.asar and
+ * ships `resources/runtime/cli/bin/dsh.cmd`, which is only a wrapper that sets
+ * ELECTRON_RUN_AS_NODE and runs the Electron binary against
+ * `<app.asar>/dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/cli.js`.
+ * Plain Node cannot stat paths inside app.asar, so probe the exe and the asar.
+ */
+function resolveDshRunner() {
+  const installDir = process.env.DSH_INSTALL_DIR
+  const nodeExecutable = process.env.DSH_NODE_EXECUTABLE
+  if (installDir && nodeExecutable) {
+    const cli = path.join(installDir, 'lib', 'bin.js')
+    if (existsSync(cli)) return { label: `DSH_INSTALL_DIR ${installDir}`, command: nodeExecutable, entry: cli }
+    console.warn(`smoke-install: ${cli} not found, probing the Desktop layout instead`)
+  }
+  if (process.platform !== 'win32') return null
+  const roots = [
+    process.env.DSH_DESKTOP_ROOT,
+    process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Programs', 'DeepSeek Harness') : null,
+  ].filter(Boolean)
+  for (const root of roots) {
+    const command = path.join(root, 'DeepSeek Harness.exe')
+    const entry = path.join(root, 'resources', 'app.asar', 'dsh', 'node_modules', '@deepseek-ai', 'dsh-desktop-host', 'lib', 'cli.js')
+    if (existsSync(command) && existsSync(path.join(root, 'resources', 'app.asar'))) {
+      return { label: `Desktop ${root}`, command, entry }
+    }
+  }
+  return null
+}
+
+const runner = resolveDshRunner()
+if (runner) {
   const temp = mkdtempSync(path.join(os.tmpdir(), 'review-gate-smoke-'))
   const home = path.join(temp, 'home')
-  const run = (argv) => spawnSync(nodeExecutable, [cli, ...argv], {
+  const run = (argv) => spawnSync(runner.command, [runner.entry, ...argv], {
     cwd: temp,
     env: { ...process.env, DSH_HOME: home, ELECTRON_RUN_AS_NODE: '1' },
     encoding: 'utf8',
@@ -110,10 +139,10 @@ if (installDir && nodeExecutable) {
     if (dumped.status !== 0) fail(`dump-config failed: ${(dumped.stderr || dumped.stdout).slice(0, 2000)}`)
     if (!dumped.stdout.includes("name: '@ailunsin/dsh-review-gate'")) fail('composed profile does not mention the package')
     if (!dumped.stdout.includes('id: review-gate')) fail('composed profile does not insert review-gate')
-    console.log('smoke-install: PASS manifest + npm pack + temp-profile install')
+    console.log(`smoke-install: PASS manifest + npm pack + temp-profile install (${runner.label})`)
   } finally {
     rmSync(temp, { recursive: true, force: true })
   }
 } else {
-  console.log('smoke-install: PASS manifest + npm pack (profile install skipped: DSH env not set)')
+  console.log('smoke-install: PASS manifest + npm pack (profile install skipped: DSH CLI not found)')
 }
